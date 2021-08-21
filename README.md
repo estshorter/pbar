@@ -12,7 +12,7 @@ Note: this library is not thread-safe.
 
 ## Requiremtents
 - C++17 or later
-- VT100 escape sequences
+- Support of VT100 escape sequences
 
 ## Examples
 Minimum example:
@@ -43,7 +43,7 @@ int main(void) {
 }
 ```
 
-Mutiple bars:
+Multiple bars:
 ```cpp
 pbar::pbar bar1(4);
 pbar::pbar bar2(8);
