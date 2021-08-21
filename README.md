@@ -7,6 +7,7 @@
 - Support Windows and Linux
 - Support UTF-8 character (even in Windows!)
 - Support output while displaying a bar
+- Header only ([pbar.hpp](https://github.com/estshorter/pbar/blob/master/pbar.hpp))
 
 Note: this library is not thread-safe.
 
