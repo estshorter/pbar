@@ -43,7 +43,7 @@ int main(void) {
 }
 ```
 
-Mutiple bars:
+Multiple bars:
 ```cpp
 pbar::pbar bar1(4);
 pbar::pbar bar2(8);
