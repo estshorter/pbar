@@ -12,7 +12,7 @@ Note: this library is not thread-safe.
 
 ## Requiremtents
 - C++17 or later
-- VT100 escape sequences
+- Support of VT100 escape sequences
 
 ## Examples
 Minimum example:
