@@ -1,6 +1,8 @@
 # pbar
 **pbar** is a progress bar library inspired by [tqdm](https://github.com/tqdm/tqdm).
 
+![demo](https://raw.githubusercontent.com/estshorter/pbar/videos/example1.gif)
+
 ## Highlights
 - Support Windows and Linux
 - Support UTF-8 character (even in Windows!)
