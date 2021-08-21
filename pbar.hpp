@@ -97,19 +97,21 @@ struct u8cout : private std::streambuf, public std::ostream {
 
 class pbar {
    public:
-	pbar(std::uint64_t iter_max) : total(iter_max) {
+	pbar(std::uint64_t iter_max) : total_(iter_max) {
 		digit_ = detail::get_digit(iter_max);
 		ncols_ = static_cast<std::uint64_t>(detail::get_console_width().value_or(1) - 1);
 		is_cerr_connected_to_terminal_ = is_cerr_connected_to_terminal();
 		enable_escape_sequence();
+		if (total_ == 0) throw std::runtime_error("total_ must be greater than zero");
 	};
-	pbar(std::uint64_t iter_max, std::uint64_t ncols) : total(iter_max), ncols_(ncols) {
+	pbar(std::uint64_t iter_max, std::uint64_t ncols) : total_(iter_max), ncols_(ncols) {
 		digit_ = detail::get_digit(iter_max);
 		std::uint64_t width_console =
 			static_cast<std::uint64_t>(detail::get_console_width().value_or(1) - 1);
 		ncols_ = std::min(ncols_, width_console);
 		is_cerr_connected_to_terminal_ = is_cerr_connected_to_terminal();
 		enable_escape_sequence();
+		if (total_ == 0) throw std::runtime_error("total_ must be greater than zero");
 	}
 
 	~pbar() {
@@ -161,20 +163,18 @@ class pbar {
 			return;
 		}
 
-		if (total == 0) {
-			throw std::runtime_error("total must be greater than zero");
-		}
-
 		if (!progress_.has_value() && enable_stack_) {
 			u8cout << std::endl;
 		}
 
 		if (!progress_.has_value()) {
 			progress_ = 0;
+			ncols_ = std::min(
+				static_cast<std::uint64_t>(detail::get_console_width().value_or(1) - 1), ncols_);
 		}
 		std::uint64_t prog = progress_.value();
 		prog += delta;
-		prog = std::min(prog, total);
+		prog = std::min(prog, total_);
 		progress_ = prog;
 
 		if (enable_recalc_console_width_ && (prog % recalc_cycle_) == 0) {
@@ -194,7 +194,7 @@ class pbar {
 			}
 			if (dt.count() > 0) {
 				vel = static_cast<double>(prog) / (dt.count() * 1e-9);
-				remaining = seconds(static_cast<long long>(std::round((total - prog) / (vel))));
+				remaining = seconds(static_cast<long long>(std::round((total_ - prog) / (vel))));
 			}
 		}
 		std::int64_t width_non_brackets_base = desc_.size() + 6;
@@ -209,15 +209,17 @@ class pbar {
 				width_non_brackets_time += 1 + detail::get_digit(remain_h);
 			}
 		}
-		std::int64_t width_non_brackets = width_non_brackets_base + width_non_brackets_time;
-		std::int64_t width_brackets = ncols_ - width_non_brackets;
-		if (width_brackets < 0) {
+		std::uint64_t width_non_brackets = width_non_brackets_base + width_non_brackets_time;
+		std::uint64_t width_brackets;
+		if (ncols_ > width_non_brackets) {
+			width_brackets = ncols_ - width_non_brackets;
+		} else {
 			disable_time_measurement();
 			width_brackets = 10;
 			ncols_ = width_brackets + width_non_brackets_base;
 		}
 
-		double prog_rate = static_cast<double>(prog) / total;
+		double prog_rate = static_cast<double>(prog) / total_;
 		std::uint64_t num_brackets =
 			static_cast<std::uint64_t>(std::round(prog_rate * width_brackets));
 
@@ -237,7 +239,7 @@ class pbar {
 		}
 		u8cout << closing_bracket_char_;
 		if (enable_time_measurement_) {
-			u8cout << " " << std::setw(digit_) << prog << "/" << total << " [" << std::setfill('0');
+			u8cout << " " << std::setw(digit_) << prog << "/" << total_ << " [" << std::setfill('0');
 			if (auto dt_h = duration_cast<hours>(dt).count() > 0) {
 				u8cout << dt_h << ':';
 			}
@@ -250,10 +252,9 @@ class pbar {
 				   << std::setw(2) << remaining.count() % 60 << ", " << std::setw(0) << std::fixed
 				   << std::setprecision(2) << vel << "s/it]";
 		}
-		if (progress_ == total) {
+		if (progress_ == total_) {
 			if (!leave_) {
 				u8cout << ESC_CLEAR_LINE << '\r';
-				// u8cout << "hogehogehogehoge";
 			} else {
 				u8cout << "\r" << std::endl;
 			}
@@ -282,12 +283,14 @@ class pbar {
 		enable_stack_ = true;
 		leave_ = false;
 	}
-	void set_iter_max(std::uint64_t iter_max) { total = iter_max; }
 	void enable_leave() { leave_ = true; }
 	void disable_leave() { leave_ = false; }
 	void disable_time_measurement() { enable_time_measurement_ = false; }
 	void enable_time_measurement() { enable_time_measurement_ = true; }
 	void enable_recalc_console_width(std::uint64_t cycle) {
+		if (cycle == 0) {
+			throw std::invalid_argument("cycle must be greater than zero");
+		}
 		enable_recalc_console_width_ = true;
 		recalc_cycle_ = cycle;
 	}
@@ -318,7 +321,7 @@ class pbar {
 					  "std::string(T) must be constructible");
 		if (is_cerr_connected_to_terminal_ && ncols_ > 0) {
 			std::cerr << ESC_CLEAR_LINE << '\r';
-			interrupted_ += true;
+			interrupted_ = true;
 		}
 		std::cerr << std::forward<T>(msg);
 	}
@@ -336,7 +339,7 @@ class pbar {
 	}
 
    private:
-	std::uint64_t total = 0;
+	std::uint64_t total_ = 0;
 	std::uint64_t ncols_ = 80;
 	std::optional<std::uint64_t> progress_ = std::nullopt;
 	// following members with "char_" suffix must consist of one character
