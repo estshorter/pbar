@@ -8,3 +8,8 @@ target_compile_options(examples PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/W4 /utf-8 /Zc:__cplusplus /Zc:preprocessor>
 )
 target_compile_features(examples PRIVATE cxx_std_17)
+
+if (UNIX)
+find_package(Threads REQUIRED)
+target_link_libraries(examples Threads::Threads)
+endif()
