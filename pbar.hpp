@@ -97,14 +97,10 @@ struct u8cout : private std::streambuf, public std::ostream {
 
 class pbar {
    public:
-	pbar(std::uint64_t total) : total_(total) {
-		ncols_ = static_cast<std::uint64_t>(detail::get_console_width().value_or(1) - 1);
-		init_variables(total_);
+	pbar(std::uint64_t total)
+		: pbar(total, static_cast<std::uint64_t>(detail::get_console_width().value_or(1) - 1)) {
 	};
 	pbar(std::uint64_t total, std::uint64_t ncols) : total_(total), ncols_(ncols) {
-		std::uint64_t width_console =
-			static_cast<std::uint64_t>(detail::get_console_width().value_or(1) - 1);
-		ncols_ = std::min(ncols_, width_console);
 		init_variables(total_);
 	}
 
