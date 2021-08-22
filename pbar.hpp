@@ -488,9 +488,7 @@ class spinner {
 #else
 		u8cout << u8"✔";
 #endif
-#if !defined(_WIN32)
 		u8cout << ' ';
-#endif
 		u8cout << text_ << " [SUCCESS]" << std::endl;
 	}
 
@@ -502,9 +500,7 @@ class spinner {
 #else
 		u8cout << u8"✖";
 #endif
-#if !defined(_WIN32)
 		u8cout << ' ';
-#endif
 		u8cout << text_ << " [FAILURE]" << std::endl;
 	}
 
