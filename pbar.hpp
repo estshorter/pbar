@@ -302,7 +302,7 @@ class pbar {
 	void init() { tick(0); }
 
 	template <typename T>
-	std::ostream& operator<<(const T&& obj) {
+	std::ostream& operator<<(T&& obj) {
 		u8cout << ESC_CLEAR_LINE << '\r';
 		u8cout << std::forward<T>(obj);
 		interrupted_ = true;
@@ -310,7 +310,7 @@ class pbar {
 	}
 
 	template <class T>
-	void warn(const T&& msg) {
+	void warn(T&& msg) {
 		static_assert(std::is_constructible_v<std::string, T>,
 					  "std::string(T) must be constructible");
 		if (is_cerr_connected_to_terminal_ && ncols_ > 0) {
