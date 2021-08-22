@@ -99,16 +99,16 @@ struct u8cout : private std::streambuf, public std::ostream {
 		std::cout.flush();
 #endif
 	}
-	u8cout& operator=(const u8cout& other) {
-		oss.str("");
-		oss.clear();
-		oss << other.oss.str();
-		return *this;
-	}
-	u8cout& operator=(u8cout&& other) noexcept {
-		oss = std::move(other.oss);
-		return *this;
-	}
+	// u8cout& operator=(const u8cout& other) {
+	//	oss.str("");
+	//	oss.clear();
+	//	oss << other.oss.str();
+	//	return *this;
+	//}
+	// u8cout& operator=(u8cout&& other) noexcept {
+	//	oss = std::move(other.oss);
+	//	return *this;
+	//}
 
    private:
 	int overflow(int c) override {
@@ -355,7 +355,7 @@ class pbar {
 		enable_time_measurement_ = other.enable_time_measurement_;
 		is_cerr_connected_to_terminal_ = other.is_cerr_connected_to_terminal_;
 		interrupted_ = other.interrupted_;
-		u8cout = other.u8cout;
+		// u8cout = other.u8cout;
 		return *this;
 	}
 	pbar& operator=(pbar&& other) noexcept {
@@ -368,7 +368,7 @@ class pbar {
 		enable_time_measurement_ = std::move(other.enable_time_measurement_);
 		is_cerr_connected_to_terminal_ = std::move(other.is_cerr_connected_to_terminal_);
 		interrupted_ = std::move(other.interrupted_);
-		u8cout = std::move(other.u8cout);
+		// u8cout = std::move(other.u8cout);
 		return *this;
 	}
 
@@ -432,9 +432,15 @@ class spinner {
 		thr_ = std::thread([&]() {
 			size_t c = 0;
 
-			while (active_) {
+			while (true) {
 				{
-					std::lock_guard lock(mtx_);
+					std::lock_guard lock(mtx_active_);
+					if (!active_) {
+						return;
+					}
+				}
+				{
+					std::lock_guard lock(mtx_output_);
 					u8cout << '\r';
 #if !defined(_WIN32) && __cplusplus > 201703L  // for C++20
 					std::u8string spinner_char = spinner_chars_[c];
@@ -452,10 +458,15 @@ class spinner {
 	}
 
 	void stop() {
-		u8cout << "\x1b[?25h";
 		if (!thr_) {
 			return;
 		}
+		{
+			std::lock_guard lock(mtx_active_);
+			active_ = false;
+		}
+		thr_->join();
+		u8cout << "\x1b[?25h";
 
 #ifdef _WIN32
 		auto hOutput = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -466,9 +477,6 @@ class spinner {
 			std::cerr << "SetConsoleMode failed. cannot reset console mode." << std::endl;
 		}
 #endif
-
-		active_ = false;
-		thr_->join();
 		thr_ = std::nullopt;
 	}
 
@@ -480,24 +488,29 @@ class spinner {
 #else
 		u8cout << u8"✔";
 #endif
+#if !defined(_WIN32)
+		u8cout << ' ';
+#endif
 		u8cout << text_ << " [SUCCESS]" << std::endl;
-		u8cout.flush();
 	}
 
 	void err() {
+		stop();
 		u8cout << '\r';
 #if __cplusplus > 201703L  // for C++20
 		u8cout << reinterpret_cast<const char*>(u8"✖");
 #else
 		u8cout << u8"✖";
 #endif
+#if !defined(_WIN32)
+		u8cout << ' ';
+#endif
 		u8cout << text_ << " [FAILURE]" << std::endl;
-		u8cout.flush();
 	}
 
 	template <typename T>
 	std::ostream& operator<<(T&& obj) {
-		std::lock_guard lock(mtx_);
+		std::lock_guard lock(mtx_output_);
 #ifdef _WIN32
 		if (_isatty(_fileno(stdout))) {
 #else
@@ -516,7 +529,7 @@ class spinner {
 	void warn(T&& msg) {
 		static_assert(std::is_constructible_v<std::string, T>,
 					  "std::string(T) must be constructible");
-		std::lock_guard lock(mtx_);
+		std::lock_guard lock(mtx_output_);
 #ifdef _WIN32
 		if (_isatty(_fileno(stderr))) {
 #else
@@ -537,8 +550,6 @@ class spinner {
 		dwMode_orig_ = other.dwMode_orig_;
 #endif
 		active_ = other.active_;
-		thr_ = std::nullopt;
-		u8cout = u8cout;
 		return *this;
 	}
 
@@ -550,8 +561,6 @@ class spinner {
 		dwMode_orig_ = std::move(other.dwMode_orig_);
 #endif
 		active_ = std::move(other.active_);
-		thr_ = std::nullopt;
-		u8cout = std::move(u8cout);
 		return *this;
 	}
 
@@ -572,7 +581,8 @@ class spinner {
 	std::string text_;
 	bool active_ = false;
 	std::optional<std::thread> thr_ = std::nullopt;
-	std::mutex mtx_;
+	std::mutex mtx_output_;
+	std::mutex mtx_active_;
 	detail::u8cout u8cout;
 #ifdef _WIN32
 	DWORD dwMode_orig_;
