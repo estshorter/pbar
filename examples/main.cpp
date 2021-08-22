@@ -8,20 +8,16 @@ int main(void) {
 	using namespace std::chrono;
 	constexpr auto total_ = 100;
 	constexpr auto ncols = 100;
-	pbar::pbar bar(total_, ncols);
-	bar.set_description("[TASK0]");
-	bar.init();	 // not always necessary
-	bar.enable_recalc_console_width(1);  // check console width every 10 ticks
+	pbar::pbar bar(total_, ncols, "[TASK0]");
+	bar.init();							 // not always necessary
+	bar.enable_recalc_console_width(1);	 // check console width every tick
 	for (std::int64_t i = 0; i < total_; ++i, ++bar) {
-		sleep_for(milliseconds(100));
+		sleep_for(milliseconds(20));
 	}
-	std::cout << "done!" << std::endl;
-	pbar::pbar bar1(4);
-	pbar::pbar bar2(8);
-	pbar::pbar bar3(16);
-	bar1.set_description("[TASK1]");
-	bar2.set_description("[TASK2]");
-	bar3.set_description("[TASK3]");
+	std::cout << "TASK0 done!" << std::endl;
+	pbar::pbar bar1(4, "[TASK1]");
+	pbar::pbar bar2(8, "[TASK2]");
+	pbar::pbar bar3(16, "[TASK3]");
 
 	bar2.enable_stack();
 	bar3.enable_stack();
@@ -40,7 +36,7 @@ int main(void) {
 		}
 		sleep_for(milliseconds(100));
 	}
-	std::cout << "done!" << std::endl;
+	std::cout << "TASK1-3 done!" << std::endl;
 
 	return 0;
 }

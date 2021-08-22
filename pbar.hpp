@@ -97,10 +97,11 @@ struct u8cout : private std::streambuf, public std::ostream {
 
 class pbar {
    public:
-	pbar(std::uint64_t total)
-		: pbar(total, static_cast<std::uint64_t>(detail::get_console_width().value_or(1) - 1)) {
-	};
-	pbar(std::uint64_t total, std::uint64_t ncols) : total_(total), ncols_(ncols) {
+	pbar(std::uint64_t total, const std::string& desc = "")
+		: pbar(total, static_cast<std::uint64_t>(detail::get_console_width().value_or(1) - 1), desc){};
+
+	pbar(std::uint64_t total, std::uint64_t ncols, const std::string& desc = "")
+		: total_(total), ncols_(ncols), desc_(desc) {
 		init_variables(total_);
 	}
 
@@ -241,7 +242,7 @@ class pbar {
 			}
 			u8cout << std::setw(2) << duration_cast<minutes>(remaining).count() % 60 << ':'
 				   << std::setw(2) << remaining.count() % 60 << ", " << std::setw(0) << std::fixed
-				   << std::setprecision(2) << vel << "s/it]";
+				   << std::setprecision(2) << vel << "it/s]";
 		}
 		if (progress_ == total_) {
 			if (!leave_) {
