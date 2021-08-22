@@ -429,9 +429,12 @@ class spinner {
 			int c = -1;
 
 			while (active_) {
-				std::lock_guard lock(mtx_);
-				u8cout << "\r" << spinner_chars_[c = ++c % spinner_chars_.size()] << ' ' << suffix_;
-				u8cout.flush();
+				{
+					std::lock_guard lock(mtx_);
+					u8cout << "\r" << spinner_chars_[c] << ' ' << suffix_;
+					c = (c + 1) % spinner_chars_.size();
+					u8cout.flush();
+				}
 				std::this_thread::sleep_for(delay_);
 			}
 		});
@@ -460,12 +463,12 @@ class spinner {
 
 	void ok() {
 		stop();
-		u8cout << "\r" << u8"✔" << suffix_ << " [SUCCESS]";
+		u8cout << "\r" << u8"✔" << suffix_ << " [SUCCESS]" << std::endl;
 		u8cout.flush();
 	}
 
 	void err() {
-		u8cout << "\r" << u8"✖" << suffix_ << " [FAILURE]";
+		u8cout << "\r" << u8"✖" << suffix_ << " [FAILURE]" << std::endl;
 		u8cout.flush();
 	}
 
@@ -492,7 +495,9 @@ class spinner {
 		}
 		delay_ = other.delay_;
 		suffix_ = other.suffix_;
+#ifdef _WIN32
 		dwMode_orig_ = other.dwMode_orig_;
+#endif
 		active_ = other.active_;
 		thr_ = std::nullopt;
 		u8cout = u8cout;
@@ -503,7 +508,9 @@ class spinner {
 		other.stop();
 		delay_ = std::move(other.delay_);
 		suffix_ = std::move(other.suffix_);
+#ifdef _WIN32
 		dwMode_orig_ = std::move(other.dwMode_orig_);
+#endif
 		active_ = std::move(other.active_);
 		thr_ = std::nullopt;
 		u8cout = std::move(u8cout);
