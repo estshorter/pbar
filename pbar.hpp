@@ -313,7 +313,9 @@ class pbar {
 
 	template <typename T>
 	std::ostream& operator<<(T&& obj) {
-		u8cout << ESC_CLEAR_LINE << '\r';
+		if (ncols_ > 0) {
+			u8cout << ESC_CLEAR_LINE << '\r';
+		}
 		u8cout << std::forward<T>(obj);
 		return u8cout;
 	}
@@ -493,7 +495,13 @@ class spinner {
 	template <typename T>
 	std::ostream& operator<<(T&& obj) {
 		std::lock_guard lock(mtx_);
+#ifdef _WIN32
+		if (_isatty(_fileno(stdout))) {
+#else
+		if (isatty(fileno(stdout))) {
+#endif
 		u8cout << ESC_CLEAR_LINE << '\r';
+	}
 		u8cout << std::forward<T>(obj);
 		return u8cout;
 	}
@@ -503,7 +511,13 @@ class spinner {
 		static_assert(std::is_constructible_v<std::string, T>,
 					  "std::string(T) must be constructible");
 		std::lock_guard lock(mtx_);
-		std::cerr << ESC_CLEAR_LINE << '\r';
+#ifdef _WIN32
+		if (_isatty(_fileno(stderr))) {
+#else
+		if (isatty(fileno(stderr))) {
+#endif
+			std::cerr << ESC_CLEAR_LINE << '\r';
+		}
 		std::cerr << std::forward<T>(msg);
 	}
 
