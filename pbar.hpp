@@ -190,11 +190,11 @@ class pbar {
 				remaining = seconds(static_cast<long long>(std::round((total_ - prog) / (vel))));
 			}
 		}
-		std::int64_t width_non_brackets_base = desc_.size() + 6;
+		std::int64_t width_non_brackets_base = desc_.size() + 2 * digit_ +8;
 		std::int64_t width_non_brackets_time = 0;
 		if (enable_time_measurement_) {
 			width_non_brackets_time +=
-				2 * digit_ + detail::get_digit(static_cast<std::int64_t>(vel)) + 25;
+				 detail::get_digit(static_cast<std::int64_t>(vel)) + 23;
 			if (auto dt_h = duration_cast<hours>(dt).count(); dt_h > 0) {
 				width_non_brackets_time += 1 + detail::get_digit(dt_h);
 			}
@@ -230,9 +230,9 @@ class pbar {
 		for (decltype(num_brackets) _ = 0; _ < width_brackets - num_brackets; _++) {
 			u8cout << todo_char_;
 		}
-		u8cout << closing_bracket_char_;
+		u8cout << closing_bracket_char_ << " " << std::setw(digit_) << prog << "/" << total_;
 		if (enable_time_measurement_) {
-			u8cout << " " << std::setw(digit_) << prog << "/" << total_ << " ["
+			u8cout << " ["
 				   << std::setfill('0');
 			if (auto dt_h = duration_cast<hours>(dt).count() > 0) {
 				u8cout << dt_h << ':';
