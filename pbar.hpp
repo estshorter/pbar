@@ -103,15 +103,14 @@ class pbar {
 	pbar(std::uint64_t total, std::uint64_t ncols, const std::string& desc = "")
 		: total_(total), ncols_(ncols), desc_(desc) {
 		init_variables(total_);
-		u8cout << "\x1b[?12l"; // Stop blinking the cursor
 	}
 
 	~pbar() {
-		u8cout << "\x1b[?12h";	// Start blinking the cursor
-#ifdef _WIN32
 		if (enable_stack_) {
 			return;
 		}
+		u8cout << "\x1b[?25h";	// show cursor
+#ifdef _WIN32
 		auto hOutput = GetStdHandle(STD_OUTPUT_HANDLE);
 		if (hOutput == INVALID_HANDLE_VALUE) {
 			std::cerr << "GetStdHandle failed. cannot reset console mode." << std::endl;
@@ -337,6 +336,9 @@ class pbar {
 		digit_ = detail::get_digit(total);
 		is_cerr_connected_to_terminal_ = is_cerr_connected_to_terminal();
 		enable_escape_sequence();
+		if (!enable_stack_) {
+			u8cout << "\x1b[?25l";	// hide cursor
+		}
 		if (total_ == 0) throw std::runtime_error("total_ must be greater than zero");
 	}
 	std::uint64_t total_ = 0;
