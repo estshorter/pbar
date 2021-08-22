@@ -315,9 +315,12 @@ class pbar {
 	std::ostream& operator<<(T&& obj) {
 		if (ncols_ > 0) {
 			u8cout << ESC_CLEAR_LINE << '\r';
+			u8cout << std::forward<T>(obj);
+			return u8cout;
+		} else {
+			std::cout << std::forward<T>(obj);
+			return std::cout;
 		}
-		u8cout << std::forward<T>(obj);
-		return u8cout;
 	}
 
 	template <class T>
@@ -412,8 +415,8 @@ class pbar {
 
 class spinner {
    public:
-	spinner(std::string text, std::chrono::milliseconds delay = std::chrono::milliseconds(200))
-		: delay_(delay), suffix_(text) {}
+	spinner(std::string text, std::chrono::milliseconds interval = std::chrono::milliseconds(200))
+		: interval_(interval), text_(text) {}
 	~spinner() { stop(); }
 
 	void start() {
@@ -439,11 +442,11 @@ class spinner {
 #else
 					u8cout << spinner_chars_[c];
 #endif
-					u8cout << ' ' << suffix_;
+					u8cout << ' ' << text_;
 					c = (c + 1) % spinner_chars_.size();
 					u8cout.flush();
 				}
-				std::this_thread::sleep_for(delay_);
+				std::this_thread::sleep_for(interval_);
 			}
 		});
 	}
@@ -477,7 +480,7 @@ class spinner {
 #else
 		u8cout << u8"✔";
 #endif
-		u8cout << suffix_ << " [SUCCESS]" << std::endl;
+		u8cout << text_ << " [SUCCESS]" << std::endl;
 		u8cout.flush();
 	}
 
@@ -488,7 +491,7 @@ class spinner {
 #else
 		u8cout << u8"✖";
 #endif
-		u8cout << suffix_ << " [FAILURE]" << std::endl;
+		u8cout << text_ << " [FAILURE]" << std::endl;
 		u8cout.flush();
 	}
 
@@ -500,10 +503,13 @@ class spinner {
 #else
 		if (isatty(fileno(stdout))) {
 #endif
-		u8cout << ESC_CLEAR_LINE << '\r';
-	}
-		u8cout << std::forward<T>(obj);
-		return u8cout;
+			u8cout << ESC_CLEAR_LINE << '\r';
+			u8cout << std::forward<T>(obj);
+			return u8cout;
+		} else {
+			std::cout << std::forward<T>(obj);
+			return std::cout;
+		}
 	}
 
 	template <class T>
@@ -525,8 +531,8 @@ class spinner {
 		if (thr_ || other.thr_) {
 			throw std::runtime_error("spinner is working");
 		}
-		delay_ = other.delay_;
-		suffix_ = other.suffix_;
+		interval_ = other.interval_;
+		text_ = other.text_;
 #ifdef _WIN32
 		dwMode_orig_ = other.dwMode_orig_;
 #endif
@@ -538,8 +544,8 @@ class spinner {
 
 	spinner& operator=(spinner&& other) {
 		other.stop();
-		delay_ = std::move(other.delay_);
-		suffix_ = std::move(other.suffix_);
+		interval_ = std::move(other.interval_);
+		text_ = std::move(other.text_);
 #ifdef _WIN32
 		dwMode_orig_ = std::move(other.dwMode_orig_);
 #endif
@@ -562,16 +568,15 @@ class spinner {
 #endif
 #endif
 	inline static const std::string ESC_CLEAR_LINE = "\x1b[2K";
-	//;
-	std::chrono::milliseconds delay_;
-	std::string suffix_;
+	std::chrono::milliseconds interval_;
+	std::string text_;
 	bool active_ = false;
 	std::optional<std::thread> thr_ = std::nullopt;
 	std::mutex mtx_;
 	detail::u8cout u8cout;
 #ifdef _WIN32
-	DWORD dwMode_orig_ = 0;
+	DWORD dwMode_orig_;
 #endif
-};	// namespace pbar
+};
 
 }  // namespace pbar
