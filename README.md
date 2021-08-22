@@ -31,7 +31,7 @@ int main(void) {
 	constexpr auto desc = "[TASK0]";
 
 	pbar::pbar bar(total, ncols, desc);
-	bar.init();	 // not always necessary
+	bar.init();	 // show a bar with zero progress
 	for (auto i = 0; i < total; ++i, ++bar) {
 		if (i == 0) {
 			bar << "OUTPUT_TO_STDOUT" << std::endl;
