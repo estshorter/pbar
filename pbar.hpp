@@ -275,7 +275,7 @@ class pbar {
 	// we assume desc_ consists of ascii characters
 	void set_description(const std::string& desc) { desc_ = desc; }
 	void set_description(std::string&& desc) { desc_ = std::move(desc); }
-#if __cplusplus >= 202002L
+#if __cplusplus > 201703L  // for C++20
 	void set_description(const std::u8string& desc) {
 		desc_ = reinterpret_cast<const char*>(desc.data());
 	}
@@ -383,7 +383,7 @@ class pbar {
 	std::uint64_t ncols_ = 80;
 	std::optional<std::uint64_t> progress_ = std::nullopt;
 	// following members with "char_" text must consist of one character
-#if __cplusplus >= 202002L
+#if __cplusplus > 201703L  // for C++20
 	inline static const std::string done_char_ = reinterpret_cast<const char*>(u8"█");
 #else
 	inline static const std::string done_char_ = u8"█";
@@ -431,7 +431,14 @@ class spinner {
 			while (active_) {
 				{
 					std::lock_guard lock(mtx_);
-					u8cout << "\r" << spinner_chars_[c] << ' ' << suffix_;
+					u8cout << '\r';
+#if !defined(_WIN32) && __cplusplus > 201703L  // for C++20
+					std::u8string spinner_char = spinner_chars_[c];
+					u8cout << reinterpret_cast<const char*>(spinner_char.data());
+#else
+					u8cout << spinner_chars_[c];
+#endif
+					u8cout << ' ' << suffix_;
 					c = (c + 1) % spinner_chars_.size();
 					u8cout.flush();
 				}
@@ -463,12 +470,24 @@ class spinner {
 
 	void ok() {
 		stop();
-		u8cout << "\r" << u8"✔" << suffix_ << " [SUCCESS]" << std::endl;
+		u8cout << '\r';
+#if __cplusplus > 201703L  // for C++20
+		u8cout << reinterpret_cast<const char*>(u8"✔");
+#else
+		u8cout << u8"✔";
+#endif
+		u8cout << suffix_ << " [SUCCESS]" << std::endl;
 		u8cout.flush();
 	}
 
 	void err() {
-		u8cout << "\r" << u8"✖" << suffix_ << " [FAILURE]" << std::endl;
+		u8cout << '\r';
+#if __cplusplus > 201703L  // for C++20
+		u8cout << reinterpret_cast<const char*>(u8"✖");
+#else
+		u8cout << u8"✖";
+#endif
+		u8cout << suffix_ << " [FAILURE]" << std::endl;
 		u8cout.flush();
 	}
 
@@ -518,9 +537,19 @@ class spinner {
 	}
 
    private:
+#ifdef _WIN32
 	inline static const std::vector<std::string> spinner_chars_ = {{"|", "/", "-", "\\"}};
+#else
+#if __cplusplus > 201703L  // for C++20
+	inline static const std::vector<std::u8string> spinner_chars_ = {
+		u8"⠋", u8"⠙", u8"⠹", u8"⠸", u8"⠼", u8"⠴", u8"⠦", u8"⠧", u8"⠇", u8"⠏"};
+#else
+	inline static const std::vector<std::string> spinner_chars_ = {
+		{u8"⠋", u8"⠙", u8"⠹", u8"⠸", u8"⠼", u8"⠴", u8"⠦", u8"⠧", u8"⠇", u8"⠏"}};
+#endif
+#endif
 	inline static const std::string ESC_CLEAR_LINE = "\x1b[2K";
-	//{u8"⠋", u8"⠙", u8"⠹", u8"⠸", u8"⠼", u8"⠴", u8"⠦", u8"⠧", u8"⠇", u8"⠏"}};
+	//;
 	std::chrono::milliseconds delay_;
 	std::string suffix_;
 	bool active_ = false;
@@ -530,6 +559,6 @@ class spinner {
 #ifdef _WIN32
 	DWORD dwMode_orig_ = 0;
 #endif
-};
+};	// namespace pbar
 
 }  // namespace pbar
