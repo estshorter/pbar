@@ -6,11 +6,12 @@
 int main(void) {
 	using namespace std::this_thread;
 	using namespace std::chrono;
-	constexpr auto total_ = 100;
+	constexpr auto total_ = 80;
 	constexpr auto ncols = 100;
 	pbar::pbar bar(total_, ncols, "[TASK0]");
 	bar.init();							 // not always necessary
 	bar.enable_recalc_console_width(1);	 // check console width every tick
+	bar.disable_time_measurement();
 	for (std::int64_t i = 0; i < total_; ++i, ++bar) {
 		sleep_for(milliseconds(20));
 	}

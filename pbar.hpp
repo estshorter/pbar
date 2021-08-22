@@ -103,9 +103,11 @@ class pbar {
 	pbar(std::uint64_t total, std::uint64_t ncols, const std::string& desc = "")
 		: total_(total), ncols_(ncols), desc_(desc) {
 		init_variables(total_);
+		u8cout << "\x1b[?12l"; // Stop blinking the cursor
 	}
 
 	~pbar() {
+		u8cout << "\x1b[?12h";	// Start blinking the cursor
 #ifdef _WIN32
 		if (enable_stack_) {
 			return;
@@ -216,7 +218,7 @@ class pbar {
 
 		auto prev = u8cout.fill(' ');
 
-		u8cout << '\r';
+		u8cout << ESC_CLEAR_LINE << '\r';
 		if (!desc_.empty()) {
 			u8cout << desc_ << ":";
 		}
