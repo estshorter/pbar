@@ -39,5 +39,19 @@ int main(void) {
 	}
 	std::cout << "TASK1-3 done!" << std::endl;
 
+	//spinner example
+	using namespace std::chrono;
+	using namespace std::this_thread;
+	auto spin = pbar::spinner(" Loading...", 100ms);
+	spin.start();
+	sleep_for(milliseconds(3000));
+	spin.ok();
+	spin = pbar::spinner(" Loading2...", 100ms);
+	std::cout << std::endl;
+	spin.start();
+	spin << "msg" << std::endl;
+	spin.warn("msg2\n");
+	sleep_for(milliseconds(3000));
+	spin.err();
 	return 0;
 }

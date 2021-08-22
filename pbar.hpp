@@ -2,8 +2,11 @@
 #include <chrono>
 #include <cmath>
 #include <iomanip>
+#include <mutex>
 #include <optional>
 #include <sstream>
+#include <thread>
+#include <vector>
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -64,6 +67,24 @@ std::optional<int> get_console_width() {
 #endif
 }
 
+#ifdef _WIN32
+DWORD enable_escape_sequence() {
+	auto hOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+	DWORD dwMode_orig_;
+	if (hOutput == INVALID_HANDLE_VALUE) {
+		throw std::runtime_error("GetStdHandle failed.");
+	}
+	if (!GetConsoleMode(hOutput, &dwMode_orig_)) {
+		throw std::runtime_error("GetConsoleMode failed.");
+	}
+	if (!SetConsoleMode(hOutput, dwMode_orig_ | ENABLE_VIRTUAL_TERMINAL_PROCESSING |
+									 DISABLE_NEWLINE_AUTO_RETURN)) {
+		throw std::runtime_error("SetConsoleMode failed. cannot set virtual terminal flag.s");
+	}
+	return dwMode_orig_;
+}
+#endif
+
 struct u8cout : private std::streambuf, public std::ostream {
 	u8cout() : std::ostream(this) {}
 	void flush() {
@@ -77,6 +98,16 @@ struct u8cout : private std::streambuf, public std::ostream {
 #else
 		std::cout.flush();
 #endif
+	}
+	u8cout& operator=(const u8cout& other) {
+		oss.str("");
+		oss.clear();
+		oss << other.oss.str();
+		return *this;
+	}
+	u8cout& operator=(u8cout&& other) noexcept {
+		oss = std::move(other.oss);
+		return *this;
 	}
 
    private:
@@ -98,7 +129,8 @@ struct u8cout : private std::streambuf, public std::ostream {
 class pbar {
    public:
 	pbar(std::uint64_t total, const std::string& desc = "")
-		: pbar(total, static_cast<std::uint64_t>(detail::get_console_width().value_or(1) - 1), desc){};
+		: pbar(total, static_cast<std::uint64_t>(detail::get_console_width().value_or(1) - 1),
+			   desc){};
 
 	pbar(std::uint64_t total, std::uint64_t ncols, const std::string& desc = "")
 		: total_(total), ncols_(ncols), desc_(desc) {
@@ -115,27 +147,8 @@ class pbar {
 		if (hOutput == INVALID_HANDLE_VALUE) {
 			std::cerr << "GetStdHandle failed. cannot reset console mode." << std::endl;
 		}
-		if (!SetConsoleMode(hOutput, dwMode_orig)) {
+		if (!SetConsoleMode(hOutput, dwMode_orig_)) {
 			std::cerr << "SetConsoleMode failed. cannot reset console mode." << std::endl;
-		}
-#endif
-	}
-
-	void enable_escape_sequence() {
-#ifdef _WIN32
-		if (enable_stack_) {
-			return;
-		}
-		auto hOutput = GetStdHandle(STD_OUTPUT_HANDLE);
-		if (hOutput == INVALID_HANDLE_VALUE) {
-			throw std::runtime_error("GetStdHandle failed.");
-		}
-		if (!GetConsoleMode(hOutput, &dwMode_orig)) {
-			throw std::runtime_error("GetConsoleMode failed.");
-		}
-		if (!SetConsoleMode(hOutput, dwMode_orig | ENABLE_VIRTUAL_TERMINAL_PROCESSING |
-										 DISABLE_NEWLINE_AUTO_RETURN)) {
-			throw std::runtime_error("SetConsoleMode failed. cannot set virtual terminal flag.s");
 		}
 #endif
 	}
@@ -189,11 +202,10 @@ class pbar {
 				remaining = seconds(static_cast<long long>(std::round((total_ - prog) / (vel))));
 			}
 		}
-		std::int64_t width_non_brackets_base = desc_.size() + 2 * digit_ +8;
+		std::int64_t width_non_brackets_base = desc_.size() + 2 * digit_ + 8;
 		std::int64_t width_non_brackets_time = 0;
 		if (enable_time_measurement_) {
-			width_non_brackets_time +=
-				 detail::get_digit(static_cast<std::int64_t>(vel)) + 23;
+			width_non_brackets_time += detail::get_digit(static_cast<std::int64_t>(vel)) + 23;
 			if (auto dt_h = duration_cast<hours>(dt).count(); dt_h > 0) {
 				width_non_brackets_time += 1 + detail::get_digit(dt_h);
 			}
@@ -231,8 +243,7 @@ class pbar {
 		}
 		u8cout << closing_bracket_char_ << " " << std::setw(digit_) << prog << "/" << total_;
 		if (enable_time_measurement_) {
-			u8cout << " ["
-				   << std::setfill('0');
+			u8cout << " [" << std::setfill('0');
 			if (auto dt_h = duration_cast<hours>(dt).count() > 0) {
 				u8cout << dt_h << ':';
 			}
@@ -304,7 +315,6 @@ class pbar {
 	std::ostream& operator<<(T&& obj) {
 		u8cout << ESC_CLEAR_LINE << '\r';
 		u8cout << std::forward<T>(obj);
-		interrupted_ = true;
 		return u8cout;
 	}
 
@@ -314,7 +324,6 @@ class pbar {
 					  "std::string(T) must be constructible");
 		if (is_cerr_connected_to_terminal_ && ncols_ > 0) {
 			std::cerr << ESC_CLEAR_LINE << '\r';
-			interrupted_ = true;
 		}
 		std::cerr << std::forward<T>(msg);
 	}
@@ -331,12 +340,41 @@ class pbar {
 		return *this;
 	}
 
+	pbar& operator=(const pbar& other) {
+		total_ = other.total_;
+		digit_ = other.digit_;
+		recalc_cycle_ = other.recalc_cycle_;
+		epoch_ = other.epoch_;
+		enable_stack_ = other.enable_stack_;
+		leave_ = other.leave_;
+		enable_time_measurement_ = other.enable_time_measurement_;
+		is_cerr_connected_to_terminal_ = other.is_cerr_connected_to_terminal_;
+		interrupted_ = other.interrupted_;
+		u8cout = other.u8cout;
+		return *this;
+	}
+	pbar& operator=(pbar&& other) noexcept {
+		digit_ = std::move(other.digit_);
+		total_ = std::move(other.total_);
+		recalc_cycle_ = std::move(other.recalc_cycle_);
+		epoch_ = std::move(other.epoch_);
+		enable_stack_ = std::move(other.enable_stack_);
+		leave_ = std::move(other.leave_);
+		enable_time_measurement_ = std::move(other.enable_time_measurement_);
+		is_cerr_connected_to_terminal_ = std::move(other.is_cerr_connected_to_terminal_);
+		interrupted_ = std::move(other.interrupted_);
+		u8cout = std::move(other.u8cout);
+		return *this;
+	}
+
    private:
 	void init_variables(std::uint64_t total) {
 		digit_ = detail::get_digit(total);
 		is_cerr_connected_to_terminal_ = is_cerr_connected_to_terminal();
-		enable_escape_sequence();
 		if (!enable_stack_) {
+#ifdef _WIN32
+			dwMode_orig_ = detail::enable_escape_sequence();
+#endif
 			u8cout << "\x1b[?25l";	// hide cursor
 		}
 		if (total_ == 0) throw std::runtime_error("total_ must be greater than zero");
@@ -344,7 +382,7 @@ class pbar {
 	std::uint64_t total_ = 0;
 	std::uint64_t ncols_ = 80;
 	std::optional<std::uint64_t> progress_ = std::nullopt;
-	// following members with "char_" suffix must consist of one character
+	// following members with "char_" text must consist of one character
 #if __cplusplus >= 202002L
 	inline static const std::string done_char_ = reinterpret_cast<const char*>(u8"█");
 #else
@@ -366,7 +404,125 @@ class pbar {
 	bool interrupted_ = false;
 	detail::u8cout u8cout;
 #ifdef _WIN32
-	DWORD dwMode_orig;
+	DWORD dwMode_orig_;
 #endif
-};	// namespace pbar
+};
+
+class spinner {
+   public:
+	spinner(std::string text, std::chrono::milliseconds delay = std::chrono::milliseconds(200))
+		: delay_(delay), suffix_(text) {}
+	~spinner() { stop(); }
+
+	void start() {
+		if (thr_) {
+			throw std::runtime_error("spinner is already working");
+		}
+		active_ = true;
+#ifdef _WIN32
+		dwMode_orig_ = detail::enable_escape_sequence();
+#endif
+		u8cout << "\x1b[?25l";
+		u8cout.flush();
+
+		thr_ = std::thread([&]() {
+			int c = -1;
+
+			while (active_) {
+				std::lock_guard lock(mtx_);
+				u8cout << "\r" << spinner_chars_[c = ++c % spinner_chars_.size()] << ' ' << suffix_;
+				u8cout.flush();
+				std::this_thread::sleep_for(delay_);
+			}
+		});
+	}
+
+	void stop() {
+		u8cout << "\x1b[?25h";
+		if (!thr_) {
+			return;
+		}
+
+#ifdef _WIN32
+		auto hOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+		if (hOutput == INVALID_HANDLE_VALUE) {
+			std::cerr << "GetStdHandle failed. cannot reset console mode." << std::endl;
+		}
+		if (!SetConsoleMode(hOutput, dwMode_orig_)) {
+			std::cerr << "SetConsoleMode failed. cannot reset console mode." << std::endl;
+		}
+#endif
+
+		active_ = false;
+		thr_->join();
+		thr_ = std::nullopt;
+	}
+
+	void ok() {
+		stop();
+		u8cout << "\r" << u8"✔" << suffix_ << " [SUCCESS]";
+		u8cout.flush();
+	}
+
+	void err() {
+		u8cout << "\r" << u8"✖" << suffix_ << " [FAILURE]";
+		u8cout.flush();
+	}
+
+	template <typename T>
+	std::ostream& operator<<(T&& obj) {
+		std::lock_guard lock(mtx_);
+		u8cout << ESC_CLEAR_LINE << '\r';
+		u8cout << std::forward<T>(obj);
+		return u8cout;
+	}
+
+	template <class T>
+	void warn(T&& msg) {
+		static_assert(std::is_constructible_v<std::string, T>,
+					  "std::string(T) must be constructible");
+		std::lock_guard lock(mtx_);
+		std::cerr << ESC_CLEAR_LINE << '\r';
+		std::cerr << std::forward<T>(msg);
+	}
+
+	spinner& operator=(const spinner& other) {
+		if (thr_ || other.thr_) {
+			throw std::runtime_error("spinner is working");
+		}
+		delay_ = other.delay_;
+		suffix_ = other.suffix_;
+		dwMode_orig_ = other.dwMode_orig_;
+		active_ = other.active_;
+		thr_ = std::nullopt;
+		u8cout = u8cout;
+		return *this;
+	}
+
+	spinner& operator=(spinner&& other) {
+		other.stop();
+		delay_ = std::move(other.delay_);
+		suffix_ = std::move(other.suffix_);
+		dwMode_orig_ = std::move(other.dwMode_orig_);
+		active_ = std::move(other.active_);
+		thr_ = std::nullopt;
+		u8cout = std::move(u8cout);
+		return *this;
+	}
+
+   private:
+	inline static const std::vector<std::string> spinner_chars_ = {{"|", "/", "-", "\\"}};
+	inline static const std::string ESC_CLEAR_LINE = "\x1b[2K";
+	//{u8"⠋", u8"⠙", u8"⠹", u8"⠸", u8"⠼", u8"⠴", u8"⠦", u8"⠧", u8"⠇", u8"⠏"}};
+	std::chrono::milliseconds delay_;
+	std::string suffix_;
+	bool active_ = false;
+	std::optional<std::thread> thr_ = std::nullopt;
+	std::mutex mtx_;
+	detail::u8cout u8cout;
+#ifdef _WIN32
+	DWORD dwMode_orig_ = 0;
+#endif
+};
+
 }  // namespace pbar
