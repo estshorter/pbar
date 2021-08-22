@@ -423,10 +423,9 @@ class spinner {
 		dwMode_orig_ = detail::enable_escape_sequence();
 #endif
 		u8cout << "\x1b[?25l";
-		u8cout.flush();
 
 		thr_ = std::thread([&]() {
-			int c = -1;
+			size_t c = 0;
 
 			while (active_) {
 				{
