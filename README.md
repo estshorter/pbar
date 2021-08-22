@@ -28,8 +28,9 @@ int main(void) {
 	using namespace std::chrono;
 	constexpr auto total = 100;
 	constexpr auto ncols = 100;
-	pbar::pbar bar(total, ncols);
-	bar.set_description("[TASK1]");
+	constexpr auto desc = "[TASK0]";
+
+	pbar::pbar bar(total, ncols, desc);
 	bar.init();	 // not always necessary
 	for (auto i = 0; i < total; ++i, ++bar) {
 		if (i == 0) {
@@ -46,17 +47,14 @@ int main(void) {
 
 Multiple bars:
 ```cpp
-pbar::pbar bar1(4);
-pbar::pbar bar2(8);
-pbar::pbar bar3(16);
-bar1.set_description("[TASK1]");
-bar2.set_description("[TASK2]");
-bar3.set_description("[TASK3]");
+pbar::pbar bar1(4, "[TASK1]");
+pbar::pbar bar2(8, "[TASK2]");
+pbar::pbar bar3(16, "[TASK3]");
 
 bar2.enable_stack();
 bar3.enable_stack();
 
-bar1.enable_recalc_console_width(10); // check console width every 10 ticks
+bar1.enable_recalc_console_width(10);  // check console width every 10 ticks
 
 bar1.init();
 for (auto i = 0; i < 4; ++i, ++bar1) {
