@@ -97,21 +97,15 @@ struct u8cout : private std::streambuf, public std::ostream {
 
 class pbar {
    public:
-	pbar(std::uint64_t iter_max) : total_(iter_max) {
-		digit_ = detail::get_digit(iter_max);
+	pbar(std::uint64_t total) : total_(total) {
 		ncols_ = static_cast<std::uint64_t>(detail::get_console_width().value_or(1) - 1);
-		is_cerr_connected_to_terminal_ = is_cerr_connected_to_terminal();
-		enable_escape_sequence();
-		if (total_ == 0) throw std::runtime_error("total_ must be greater than zero");
+		init_variables(total_);
 	};
-	pbar(std::uint64_t iter_max, std::uint64_t ncols) : total_(iter_max), ncols_(ncols) {
-		digit_ = detail::get_digit(iter_max);
+	pbar(std::uint64_t total, std::uint64_t ncols) : total_(total), ncols_(ncols) {
 		std::uint64_t width_console =
 			static_cast<std::uint64_t>(detail::get_console_width().value_or(1) - 1);
 		ncols_ = std::min(ncols_, width_console);
-		is_cerr_connected_to_terminal_ = is_cerr_connected_to_terminal();
-		enable_escape_sequence();
-		if (total_ == 0) throw std::runtime_error("total_ must be greater than zero");
+		init_variables(total_);
 	}
 
 	~pbar() {
@@ -239,7 +233,8 @@ class pbar {
 		}
 		u8cout << closing_bracket_char_;
 		if (enable_time_measurement_) {
-			u8cout << " " << std::setw(digit_) << prog << "/" << total_ << " [" << std::setfill('0');
+			u8cout << " " << std::setw(digit_) << prog << "/" << total_ << " ["
+				   << std::setfill('0');
 			if (auto dt_h = duration_cast<hours>(dt).count() > 0) {
 				u8cout << dt_h << ':';
 			}
@@ -339,6 +334,12 @@ class pbar {
 	}
 
    private:
+	void init_variables(std::uint64_t total) {
+		digit_ = detail::get_digit(total);
+		is_cerr_connected_to_terminal_ = is_cerr_connected_to_terminal();
+		enable_escape_sequence();
+		if (total_ == 0) throw std::runtime_error("total_ must be greater than zero");
+	}
 	std::uint64_t total_ = 0;
 	std::uint64_t ncols_ = 80;
 	std::optional<std::uint64_t> progress_ = std::nullopt;
