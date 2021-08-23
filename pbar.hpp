@@ -1,12 +1,13 @@
 #pragma once
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <iomanip>
+#include <iostream>
 #include <mutex>
 #include <optional>
 #include <sstream>
 #include <thread>
-#include <array>
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -613,17 +614,19 @@ class spinner {
 	}
 
 #ifdef _WIN32
-	inline static const std::vector<std::string> spinner_chars_ = {{"|", "/", "-", "\\"}};
-	inline static const std::chrono::milliseconds interval_default = std::chrono::milliseconds(130);
+	inline static const std::array<std::string, 4> spinner_chars_ = {{"|", "/", "-", "\\"}};
+	inline constexpr static std::chrono::milliseconds interval_default =
+		std::chrono::milliseconds(130);
 #else
 #if __cplusplus > 201703L  // for C++20
-	inline static const std::vector<std::u8string> spinner_chars_ = {
+	inline static const std::array<std::u8string, 10> spinner_chars_ = {
 #else
-	inline static const std::vector<std::string> spinner_chars_ = {
+	inline static const std::array<std::string, 10> spinner_chars_ = {
 #endif
 		{u8"⠋", u8"⠙", u8"⠹", u8"⠸", u8"⠼", u8"⠴", u8"⠦", u8"⠧", u8"⠇", u8"⠏"}
 	};
-	inline static const std::chrono::milliseconds interval_default = std::chrono::milliseconds(80);
+	inline constexpr static std::chrono::milliseconds interval_default =
+		std::chrono::milliseconds(80);
 #endif
 	std::chrono::milliseconds interval_;
 	std::string text_;
