@@ -54,12 +54,12 @@ std::uint64_t get_digit(const T num) {
 
 namespace detail {
 
-struct u8cout : private std::streambuf, public std::ostream {
-	u8cout() : std::ostream(this) {}
+struct u8cout_ : private std::streambuf, public std::ostream {
+	u8cout_() : std::ostream(this) {}
 	void flush() {
 #ifdef _WIN32
 		auto str_utf16 = utils::to_utf16(CP_UTF8, oss.str());
-		// std::u8cout << oss.str();
+		// std::u8cout_ << oss.str();
 		::WriteConsoleW(::GetStdHandle(STD_OUTPUT_HANDLE), str_utf16.data(),
 						static_cast<int>(str_utf16.size()), nullptr, nullptr);
 		oss.str("");
@@ -194,7 +194,7 @@ std::optional<int> get_console_width() {
 #else
 	struct winsize w;
 	if (!term::equal_stdout_term()) {
-		return 0;
+		return std::nullopt;
 	}
 	if (ioctl(fileno(stdout), TIOCGWINSZ, &w)) {
 		return std::nullopt;
@@ -215,7 +215,7 @@ class pbar {
 		digit_ = utils::get_digit(total);
 		if (!enable_stack_) {
 			dwMode_orig_ = term::enable_escape_sequence();
-			if (term::equal_stdout_term()) u8cout << term::hide_cursor;
+			if (term::equal_stdout_term()) u8cout_ << term::hide_cursor;
 		}
 		if (total_ == 0) throw std::runtime_error("total_ must be greater than zero");
 	}
@@ -224,7 +224,7 @@ class pbar {
 		if (enable_stack_) {
 			return;
 		}
-		if (term::equal_stdout_term()) u8cout << term::show_cursor;
+		if (term::equal_stdout_term()) u8cout_ << term::show_cursor;
 		try {
 			term::reset_term_setting(dwMode_orig_);
 		} catch (std::runtime_error& e) {
@@ -240,7 +240,7 @@ class pbar {
 		}
 
 		if (!progress_.has_value() && enable_stack_) {
-			u8cout << std::endl;
+			u8cout_ << std::endl;
 		}
 
 		if (!progress_.has_value()) {
@@ -298,49 +298,49 @@ class pbar {
 		std::uint64_t num_brackets =
 			static_cast<std::uint64_t>(std::round(prog_rate * width_brackets));
 
-		auto prev = u8cout.fill(' ');
+		auto prev = u8cout_.fill(' ');
 
-		u8cout << term::clear_line << '\r';
+		u8cout_ << term::clear_line << '\r';
 		if (!desc_.empty()) {
-			u8cout << desc_ << ":";
+			u8cout_ << desc_ << ":";
 		}
-		u8cout << std::setw(3) << static_cast<int>(std::round(prog_rate * 100)) << "%"
+		u8cout_ << std::setw(3) << static_cast<int>(std::round(prog_rate * 100)) << "%"
 			   << opening_bracket_char_;
 		for (decltype(num_brackets) _ = 0; _ < num_brackets; _++) {
-			u8cout << done_char_;
+			u8cout_ << done_char_;
 		}
 		for (decltype(num_brackets) _ = 0; _ < width_brackets - num_brackets; _++) {
-			u8cout << todo_char_;
+			u8cout_ << todo_char_;
 		}
-		u8cout << closing_bracket_char_ << " " << std::setw(digit_) << prog << "/" << total_;
+		u8cout_ << closing_bracket_char_ << " " << std::setw(digit_) << prog << "/" << total_;
 		if (enable_time_measurement_) {
-			u8cout << " [" << std::setfill('0');
+			u8cout_ << " [" << std::setfill('0');
 			if (auto dt_h = duration_cast<hours>(dt).count() > 0) {
-				u8cout << dt_h << ':';
+				u8cout_ << dt_h << ':';
 			}
-			u8cout << std::setw(2) << duration_cast<minutes>(dt).count() % 60 << ':' << std::setw(2)
+			u8cout_ << std::setw(2) << duration_cast<minutes>(dt).count() % 60 << ':' << std::setw(2)
 				   << duration_cast<seconds>(dt).count() % 60 << '<';
 			if (auto remain_h = duration_cast<hours>(remaining).count(); remain_h > 0) {
-				u8cout << remain_h % 60 << ':';
+				u8cout_ << remain_h % 60 << ':';
 			}
-			u8cout << std::setw(2) << duration_cast<minutes>(remaining).count() % 60 << ':'
+			u8cout_ << std::setw(2) << duration_cast<minutes>(remaining).count() % 60 << ':'
 				   << std::setw(2) << remaining.count() % 60 << ", " << std::setw(0) << std::fixed
 				   << std::setprecision(2) << vel << "it/s]";
 		}
 		if (progress_ == total_) {
 			if (!leave_) {
-				u8cout << term::clear_line << '\r';
+				u8cout_ << term::clear_line << '\r';
 			} else {
-				u8cout << "\r" << std::endl;
+				u8cout_ << "\r" << std::endl;
 			}
 			if (enable_stack_ && !interrupted_) {
 				//カーソルを一つ上に移動
-				u8cout << term::up(1);
+				u8cout_ << term::up(1);
 			}
 			reset();
 		}
-		u8cout << std::setfill(prev);
-		u8cout.flush();
+		u8cout_ << std::setfill(prev);
+		u8cout_.flush();
 	}
 
 	// we assume desc_ consists of ascii characters
@@ -385,9 +385,9 @@ class pbar {
 	template <typename T>
 	std::ostream& operator<<(T&& obj) {
 		if (term::equal_stdout_term()) {
-			u8cout << term::clear_line << '\r';
-			u8cout << std::forward<T>(obj);
-			return u8cout;
+			u8cout_ << term::clear_line << '\r';
+			u8cout_ << std::forward<T>(obj);
+			return u8cout_;
 		} else {
 			std::cout << std::forward<T>(obj);
 			return std::cout;
@@ -425,7 +425,7 @@ class pbar {
 		leave_ = other.leave_;
 		enable_time_measurement_ = other.enable_time_measurement_;
 		interrupted_ = other.interrupted_;
-		// u8cout = other.u8cout;
+		// u8cout_ = other.u8cout_;
 		return *this;
 	}
 	pbar& operator=(pbar&& other) noexcept {
@@ -437,7 +437,7 @@ class pbar {
 		leave_ = std::move(other.leave_);
 		enable_time_measurement_ = std::move(other.enable_time_measurement_);
 		interrupted_ = std::move(other.interrupted_);
-		// u8cout = std::move(other.u8cout);
+		// u8cout_ = std::move(other.u8cout_);
 		return *this;
 	}
 
@@ -463,7 +463,7 @@ class pbar {
 	bool leave_ = true;
 	bool enable_time_measurement_ = true;
 	bool interrupted_ = false;
-	detail::u8cout u8cout;
+	detail::u8cout_ u8cout_;
 	DWORD dwMode_orig_ = 0;
 };
 
@@ -475,8 +475,8 @@ class spinner {
 		if (!thr_renderer_) return;
 		stop();
 		if (term::equal_stdout_term()) {
-			u8cout << term::show_cursor;
-			u8cout.flush();
+			u8cout_ << term::show_cursor;
+			u8cout_.flush();
 		}
 		try {
 			term::reset_term_setting(dwMode_orig_);
@@ -491,7 +491,7 @@ class spinner {
 		}
 		active_ = true;
 		dwMode_orig_ = term::enable_escape_sequence();
-		if (term::equal_stdout_term()) u8cout << term::hide_cursor;
+		if (term::equal_stdout_term()) u8cout_ << term::hide_cursor;
 		thr_renderer_ = std::thread([&]() {
 			size_t c = 0;
 			if (!term::equal_stdout_term()) return;
@@ -502,15 +502,15 @@ class spinner {
 				}
 				{
 					std::lock_guard lock(mtx_output_);
-					u8cout << '\r';
+					u8cout_ << '\r';
 #if !defined(_WIN32) && __cplusplus > 201703L  // for C++20
 					std::u8string spinner_char = spinner_chars_[c];
-					u8cout << reinterpret_cast<const char*>(spinner_char.data());
+					u8cout_ << reinterpret_cast<const char*>(spinner_char.data());
 #else
-					u8cout << spinner_chars_[c];
+					u8cout_ << spinner_chars_[c];
 #endif
-					u8cout << ' ' << text_;
-					u8cout.flush();
+					u8cout_ << ' ' << text_;
+					u8cout_.flush();
 				}
 				c = (c + 1) % spinner_chars_.size();
 				std::this_thread::sleep_for(interval_);
@@ -544,9 +544,9 @@ class spinner {
 	std::ostream& operator<<(T&& obj) {
 		if (term::equal_stdout_term()) {
 			std::lock_guard lock(mtx_output_);
-			u8cout << term::clear_line << '\r';
-			u8cout << std::forward<T>(obj);
-			return u8cout;
+			u8cout_ << term::clear_line << '\r';
+			u8cout_ << std::forward<T>(obj);
+			return u8cout_;
 		} else {
 			std::cout << std::forward<T>(obj);
 			return std::cout;
@@ -606,11 +606,11 @@ class spinner {
 		oss << icon << ' ' << text_ << " [" << msg << "]" << std::endl;
 
 		if (term::equal_stdout_term()) {
-			u8cout << color;
-			u8cout << '\r' << oss.str();
-			u8cout << term::reset;
-			u8cout << term::show_cursor;
-			u8cout.flush();
+			u8cout_ << color;
+			u8cout_ << '\r' << oss.str();
+			u8cout_ << term::reset;
+			u8cout_ << term::show_cursor;
+			u8cout_.flush();
 		} else {
 			std::cout << oss.str();
 		}
@@ -634,7 +634,7 @@ class spinner {
 	std::optional<std::thread> thr_renderer_ = std::nullopt;
 	std::mutex mtx_output_;
 	std::mutex mtx_active_;
-	detail::u8cout u8cout;
+	detail::u8cout_ u8cout_;
 	DWORD dwMode_orig_ = 0;
 };
 
