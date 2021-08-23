@@ -3,9 +3,10 @@
 #include <pbar.hpp>
 #include <thread>
 
-int main(void) {
-	using namespace std::this_thread;
-	using namespace std::chrono;
+using namespace std::this_thread;
+using namespace std::chrono;
+
+void example_pbar(void) {
 	constexpr auto total_ = 80;
 	constexpr auto ncols = 100;
 	pbar::pbar bar(total_, ncols, "[TASK0]");
@@ -38,7 +39,9 @@ int main(void) {
 		sleep_for(milliseconds(100));
 	}
 	std::cout << "TASK1-3 done!" << std::endl;
+}
 
+void example_spinner(void) {
 	// spinner example
 	using namespace std::chrono;
 	using namespace std::this_thread;
@@ -52,5 +55,11 @@ int main(void) {
 	spin.warn("msg2\n");
 	sleep_for(milliseconds(3000));
 	spin.err();
-	return 0;
 }
+
+int main(void) { 
+	example_pbar();
+	
+	example_spinner();
+	
+	return 0; }
