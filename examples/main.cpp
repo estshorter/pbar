@@ -8,7 +8,7 @@ void example_pbar(void) {
 	using namespace std::chrono;
 	constexpr auto total_ = 30;
 	constexpr auto ncols = 100;
-	pbar::pbar bar(total_, ncols, "[TASK0]");
+	pbar::pbar bar(total_, ncols, "[TASK0]" /* description */);
 	bar.init();							 // not always necessary
 	bar.enable_recalc_console_width(1);	 // check console width every tick
 	bar.disable_time_measurement();
@@ -28,8 +28,8 @@ void example_pbar(void) {
 	bar3.enable_stack();
 
 	bar1.enable_recalc_console_width(10);  // check console width every 10 ticks
-	bar1 << "msg1" << std::endl;
-	bar1.warn("msg2\n");
+	bar1 << "msg1" << std::endl;		   // to stdout
+	bar1.warn("msg2\n");				   // to stderr
 
 	bar1.init();
 	for (auto i = 0; i < bar1_total; ++i, ++bar1) {
@@ -49,20 +49,21 @@ void example_pbar(void) {
 void example_spinner(void) {
 	using namespace std::chrono;
 	using namespace std::this_thread;
-	auto spin = pbar::spinner("Loading1...", 80ms);
+	auto spin = pbar::spinner("Loading1..." /* text */, 80ms /* interval*/);
 	spin.start();
 	sleep_for(1500ms);
 	spin.ok();
 	spin = pbar::spinner("Loading2...");
 	spin.start();
-	spin << "msg1" << std::endl;
-	spin.warn("msg2\n");
+	spin << "msg1" << std::endl;  // to stdout
+	spin.warn("msg2\n");		  // to stderr
 	sleep_for(1500ms);
 	spin.err();
 }
 
-int main(void) { 
+int main(void) {
 	example_pbar();
 	example_spinner();
-	
-	return 0; }
+
+	return 0;
+}
