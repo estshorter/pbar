@@ -37,11 +37,11 @@ void example_pbar(void) {
 		for (auto j = 0; j < bar2_total; ++j, ++bar2) {
 			bar3.init();
 			for (auto k = 0; k < bar3_total; ++k, ++bar3) {
-				sleep_for(milliseconds(10));
+				sleep_for(10ms);
 			}
-			sleep_for(milliseconds(50));
+			sleep_for(50ms);
 		}
-		sleep_for(milliseconds(100));
+		sleep_for(100ms);
 	}
 	std::cout << "TASK1-3 done!" << std::endl;
 }
@@ -51,13 +51,13 @@ void example_spinner(void) {
 	using namespace std::this_thread;
 	auto spin = pbar::spinner("Loading1...", 100ms);
 	spin.start();
-	sleep_for(milliseconds(1500));
+	sleep_for(1500ms);
 	spin.ok();
 	spin = pbar::spinner("Loading2...", 100ms);
 	spin.start();
 	spin << "msg1" << std::endl;
 	spin.warn("msg2\n");
-	sleep_for(milliseconds(1500));
+	sleep_for(1500ms);
 	spin.err();
 }
 
