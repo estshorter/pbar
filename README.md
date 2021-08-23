@@ -33,7 +33,7 @@ int main(void) {
 	bar.enable_recalc_console_width(1);	 // check console width every tick
 	bar.disable_time_measurement();
 	bar.init();	 // show a bar with zero progress
-	for (std::int64_t i = 0; i < total_; ++i, ++bar) {
+	for (auto i = 0; i < total_; ++i, ++bar) {
 		sleep_for(milliseconds(20));
 	}
 	std::cout << "TASK0 done!" << std::endl;
