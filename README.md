@@ -72,6 +72,8 @@ std::cout << "done!" << std::endl;
 ```
 
 spinner is also provided:
+![demo-spinner](https://raw.githubusercontent.com/estshorter/pbar/videos/example2.gif)
+
 ``` cpp
 auto spin = pbar::spinner("Loading...", 100ms);
 spin.start();
