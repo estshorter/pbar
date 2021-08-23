@@ -445,11 +445,11 @@ class pbar {
 #if __cplusplus > 201703L  // for C++20
 	inline static const std::string done_char_ = reinterpret_cast<const char*>(u8"█");
 #else
-	inline static const std::string done_char_ = u8"█";
+	inline constexpr static auto done_char_ = u8"█";
 #endif
-	inline static const std::string todo_char_ = " ";
-	inline static const std::string opening_bracket_char_ = "|";
-	inline static const std::string closing_bracket_char_ = "|";
+	inline constexpr static auto todo_char_ = " ";
+	inline constexpr static auto opening_bracket_char_ = "|";
+	inline constexpr static auto closing_bracket_char_ = "|";
 	std::string desc_ = "";
 	std::uint64_t digit_;
 	std::uint64_t recalc_cycle_ = 0;

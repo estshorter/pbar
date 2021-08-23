@@ -20,6 +20,7 @@ jobs:
     strategy: 
       matrix:
         os: [ubuntu-latest, windows-latest]
+        cxx20: [ON, OFF]
 
     steps:
     - uses: actions/checkout@v2
@@ -31,7 +32,7 @@ jobs:
 
     - name: Build
       # Build your program with the given configuration
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -DENABLE_CXX20=${{matrix.cxx20}}
 
 #     - name: Test
 #       working-directory: ${{github.workspace}}/build
