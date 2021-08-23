@@ -305,7 +305,7 @@ class pbar {
 			u8cout_ << desc_ << ":";
 		}
 		u8cout_ << std::setw(3) << static_cast<int>(std::round(prog_rate * 100)) << "%"
-			   << opening_bracket_char_;
+				<< opening_bracket_char_;
 		for (decltype(num_brackets) _ = 0; _ < num_brackets; _++) {
 			u8cout_ << done_char_;
 		}
@@ -318,14 +318,14 @@ class pbar {
 			if (auto dt_h = duration_cast<hours>(dt).count() > 0) {
 				u8cout_ << dt_h << ':';
 			}
-			u8cout_ << std::setw(2) << duration_cast<minutes>(dt).count() % 60 << ':' << std::setw(2)
-				   << duration_cast<seconds>(dt).count() % 60 << '<';
+			u8cout_ << std::setw(2) << duration_cast<minutes>(dt).count() % 60 << ':'
+					<< std::setw(2) << duration_cast<seconds>(dt).count() % 60 << '<';
 			if (auto remain_h = duration_cast<hours>(remaining).count(); remain_h > 0) {
 				u8cout_ << remain_h % 60 << ':';
 			}
 			u8cout_ << std::setw(2) << duration_cast<minutes>(remaining).count() % 60 << ':'
-				   << std::setw(2) << remaining.count() % 60 << ", " << std::setw(0) << std::fixed
-				   << std::setprecision(2) << vel << "it/s]";
+					<< std::setw(2) << remaining.count() % 60 << ", " << std::setw(0) << std::fixed
+					<< std::setprecision(2) << vel << "it/s]";
 		}
 		if (progress_ == total_) {
 			if (!leave_) {
@@ -469,7 +469,7 @@ class pbar {
 
 class spinner {
    public:
-	spinner(std::string text, std::chrono::milliseconds interval = std::chrono::milliseconds(100))
+	spinner(std::string text, std::chrono::milliseconds interval = interval_default)
 		: interval_(interval), text_(text), dwMode_orig_(0) {}
 	~spinner() {
 		if (!thr_renderer_) return;
@@ -629,6 +629,11 @@ class spinner {
 #endif
 #endif
 	std::chrono::milliseconds interval_;
+#ifdef _WIN32
+	inline static const std::chrono::milliseconds interval_default = std::chrono::milliseconds(130);
+#else
+	inline static const std::chrono::milliseconds interval_default = std::chrono::milliseconds(80);
+#endif
 	std::string text_;
 	bool active_ = false;
 	std::optional<std::thread> thr_renderer_ = std::nullopt;

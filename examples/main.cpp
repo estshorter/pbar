@@ -49,11 +49,11 @@ void example_pbar(void) {
 void example_spinner(void) {
 	using namespace std::chrono;
 	using namespace std::this_thread;
-	auto spin = pbar::spinner("Loading1...", 100ms);
+	auto spin = pbar::spinner("Loading1...", 80ms);
 	spin.start();
 	sleep_for(1500ms);
 	spin.ok();
-	spin = pbar::spinner("Loading2...", 100ms);
+	spin = pbar::spinner("Loading2...");
 	spin.start();
 	spin << "msg1" << std::endl;
 	spin.warn("msg2\n");
