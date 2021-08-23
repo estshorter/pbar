@@ -8,10 +8,11 @@ void example_pbar(void) {
 	using namespace std::chrono;
 	constexpr auto total_ = 30;
 	constexpr auto ncols = 100;
-	pbar::pbar bar(total_, ncols, "[TASK0]" /* description */);
-	bar.init();							 // not always necessary
+	constexpr auto description = "[TASK0]";
+	pbar::pbar bar(total_, ncols, description);
 	bar.enable_recalc_console_width(1);	 // check console width every tick
 	bar.disable_time_measurement();
+	bar.init();	 // show a bar with zero progress
 	for (std::int64_t i = 0; i < total_; ++i, ++bar) {
 		sleep_for(milliseconds(20));
 	}
@@ -49,7 +50,9 @@ void example_pbar(void) {
 void example_spinner(void) {
 	using namespace std::chrono;
 	using namespace std::this_thread;
-	auto spin = pbar::spinner("Loading1..." /* text */, 80ms /* interval*/);
+	constexpr auto text = "Loading1... ";
+	constexpr auto interval = 80ms;
+	auto spin = pbar::spinner(text, interval);
 	spin.start();
 	sleep_for(1500ms);
 	spin.ok();

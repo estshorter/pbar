@@ -26,21 +26,17 @@ Minimum example:
 int main(void) {
 	using namespace std::this_thread;
 	using namespace std::chrono;
-	constexpr auto total = 100;
+	constexpr auto total_ = 30;
 	constexpr auto ncols = 100;
-	constexpr auto desc = "[TASK0]";
-
-	pbar::pbar bar(total, ncols, desc);
+	constexpr auto description = "[TASK0]";
+	pbar::pbar bar(total_, ncols, description);
+	bar.enable_recalc_console_width(1);	 // check console width every tick
+	bar.disable_time_measurement();
 	bar.init();	 // show a bar with zero progress
-	for (auto i = 0; i < total; ++i, ++bar) {
-		if (i == 0) {
-			bar << "OUTPUT_TO_STDOUT" << std::endl;
-		} else if (i == 10) {
-			bar.warn("OUTPUT_TO_STDERR\n");
-		}
-		sleep_for(milliseconds(10));
-		// bar.tick() is also fine
+	for (std::int64_t i = 0; i < total_; ++i, ++bar) {
+		sleep_for(milliseconds(20));
 	}
+	std::cout << "TASK0 done!" << std::endl;
 	return 0;
 }
 ```
@@ -59,8 +55,8 @@ bar2.enable_stack();
 bar3.enable_stack();
 
 bar1.enable_recalc_console_width(10);  // check console width every 10 ticks
-bar1 << "msg1" << std::endl;
-bar1.warn("msg2\n");
+bar1 << "msg1" << std::endl;		   // to stdout
+bar1.warn("msg2\n");				   // to stderr
 
 bar1.init();
 for (auto i = 0; i < bar1_total; ++i, ++bar1) {
@@ -81,14 +77,16 @@ spinner is also provided:
 ![demo-spinner](https://raw.githubusercontent.com/estshorter/pbar/videos/example2.gif)
 
 ``` cpp
-auto spin = pbar::spinner("Loading1...", 100ms);
+constexpr auto text = "Loading1... ";
+constexpr auto interval = 80ms;
+auto spin = pbar::spinner(text, interval);
 spin.start();
 sleep_for(1500ms);
 spin.ok();
-spin = pbar::spinner("Loading2...", 100ms);
+spin = pbar::spinner("Loading2...");
 spin.start();
-spin << "msg1" << std::endl;
-spin.warn("msg2\n");
+spin << "msg1" << std::endl;  // to stdout
+spin.warn("msg2\n");		  // to stderr
 sleep_for(1500ms);
 spin.err();
 ```
