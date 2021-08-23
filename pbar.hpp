@@ -619,6 +619,7 @@ class spinner {
 
 #ifdef _WIN32
 	inline static const std::vector<std::string> spinner_chars_ = {{"|", "/", "-", "\\"}};
+	inline static const std::chrono::milliseconds interval_default = std::chrono::milliseconds(130);
 #else
 #if __cplusplus > 201703L  // for C++20
 	inline static const std::vector<std::u8string> spinner_chars_ = {
@@ -627,13 +628,9 @@ class spinner {
 #endif
 		{u8"⠋", u8"⠙", u8"⠹", u8"⠸", u8"⠼", u8"⠴", u8"⠦", u8"⠧", u8"⠇", u8"⠏"}
 	};
-#endif
-	std::chrono::milliseconds interval_;
-#ifdef _WIN32
-	inline static const std::chrono::milliseconds interval_default = std::chrono::milliseconds(130);
-#else
 	inline static const std::chrono::milliseconds interval_default = std::chrono::milliseconds(80);
 #endif
+	std::chrono::milliseconds interval_;
 	std::string text_;
 	bool active_ = false;
 	std::optional<std::thread> thr_renderer_ = std::nullopt;
