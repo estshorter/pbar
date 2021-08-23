@@ -472,7 +472,7 @@ class spinner {
 	spinner(std::string text, std::chrono::milliseconds interval = std::chrono::milliseconds(200))
 		: interval_(interval), text_(text), dwMode_orig_(0) {}
 	~spinner() {
-		if (!thr_) return;
+		if (!thr_renderer_) return;
 		stop();
 		if (term::equal_stdout_term()) {
 			u8cout << term::show_cursor;
@@ -486,13 +486,13 @@ class spinner {
 	}
 
 	void start() {
-		if (thr_) {
+		if (thr_renderer_) {
 			throw std::runtime_error("spinner is already working");
 		}
 		active_ = true;
 		dwMode_orig_ = term::enable_escape_sequence();
 		if (term::equal_stdout_term()) u8cout << term::hide_cursor;
-		thr_ = std::thread([&]() {
+		thr_renderer_ = std::thread([&]() {
 			size_t c = 0;
 			if (!term::equal_stdout_term()) return;
 			while (true) {
@@ -510,25 +510,12 @@ class spinner {
 					u8cout << spinner_chars_[c];
 #endif
 					u8cout << ' ' << text_;
-					c = (c + 1) % spinner_chars_.size();
 					u8cout.flush();
 				}
+				c = (c + 1) % spinner_chars_.size();
 				std::this_thread::sleep_for(interval_);
 			}
 		});
-	}
-
-	bool stop() {
-		if (!thr_) {
-			return false;
-		}
-		{
-			std::lock_guard lock(mtx_active_);
-			active_ = false;
-		}
-		thr_->join();
-		thr_ = std::nullopt;
-		return true;
 	}
 
 	void ok() {
@@ -578,7 +565,7 @@ class spinner {
 	}
 
 	spinner& operator=(const spinner& other) {
-		if (thr_ || other.thr_) {
+		if (thr_renderer_ || other.thr_renderer_) {
 			throw std::runtime_error("spinner is working");
 		}
 		interval_ = other.interval_;
@@ -598,6 +585,19 @@ class spinner {
 	}
 
    private:
+	bool stop() {
+		if (!thr_renderer_) {
+			return false;
+		}
+		{
+			std::lock_guard lock(mtx_active_);
+			active_ = false;
+		}
+		thr_renderer_->join();
+		thr_renderer_ = std::nullopt;
+		return true;
+	}
+
 	void print_result(const std::string& icon, const std::string& msg, const std::string& color) {
 		if (!stop()) {
 			return;
@@ -631,7 +631,7 @@ class spinner {
 	std::chrono::milliseconds interval_;
 	std::string text_;
 	bool active_ = false;
-	std::optional<std::thread> thr_ = std::nullopt;
+	std::optional<std::thread> thr_renderer_ = std::nullopt;
 	std::mutex mtx_output_;
 	std::mutex mtx_active_;
 	detail::u8cout u8cout;
