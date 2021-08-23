@@ -469,7 +469,7 @@ class pbar {
 
 class spinner {
    public:
-	spinner(std::string text, std::chrono::milliseconds interval = std::chrono::milliseconds(200))
+	spinner(std::string text, std::chrono::milliseconds interval = std::chrono::milliseconds(100))
 		: interval_(interval), text_(text), dwMode_orig_(0) {}
 	~spinner() {
 		if (!thr_renderer_) return;
