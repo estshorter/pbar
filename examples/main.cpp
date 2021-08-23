@@ -42,7 +42,6 @@ void example_pbar(void) {
 }
 
 void example_spinner(void) {
-	// spinner example
 	using namespace std::chrono;
 	using namespace std::this_thread;
 	auto spin = pbar::spinner("Loading...", 100ms);
