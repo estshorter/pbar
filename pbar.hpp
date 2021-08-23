@@ -59,7 +59,6 @@ struct u8cout_ : private std::streambuf, public std::ostream {
 	void flush() {
 #ifdef _WIN32
 		auto str_utf16 = utils::to_utf16(CP_UTF8, oss.str());
-		// std::u8cout_ << oss.str();
 		::WriteConsoleW(::GetStdHandle(STD_OUTPUT_HANDLE), str_utf16.data(),
 						static_cast<int>(str_utf16.size()), nullptr, nullptr);
 		oss.str("");
@@ -193,7 +192,7 @@ std::optional<int> get_console_width() {
 	return std::nullopt;
 #else
 	struct winsize w;
-	if (!term::equal_stdout_term()) {
+	if (!equal_stdout_term()) {
 		return std::nullopt;
 	}
 	if (ioctl(fileno(stdout), TIOCGWINSZ, &w)) {
@@ -234,7 +233,6 @@ class pbar {
 
 	void tick(std::uint64_t delta = 1) {
 		using namespace std::chrono;
-		// not connected to terminal
 		if (term::equal_stdout_term() == 0) {
 			return;
 		}
@@ -334,7 +332,6 @@ class pbar {
 				u8cout_ << "\r" << std::endl;
 			}
 			if (enable_stack_ && !interrupted_) {
-				//カーソルを一つ上に移動
 				u8cout_ << term::up(1);
 			}
 			reset();
@@ -425,7 +422,6 @@ class pbar {
 		leave_ = other.leave_;
 		enable_time_measurement_ = other.enable_time_measurement_;
 		interrupted_ = other.interrupted_;
-		// u8cout_ = other.u8cout_;
 		return *this;
 	}
 	pbar& operator=(pbar&& other) noexcept {
@@ -437,7 +433,6 @@ class pbar {
 		leave_ = std::move(other.leave_);
 		enable_time_measurement_ = std::move(other.enable_time_measurement_);
 		interrupted_ = std::move(other.interrupted_);
-		// u8cout_ = std::move(other.u8cout_);
 		return *this;
 	}
 
@@ -445,7 +440,7 @@ class pbar {
 	std::uint64_t total_ = 0;
 	std::uint64_t ncols_ = 80;
 	std::optional<std::uint64_t> progress_ = std::nullopt;
-	// following members with "char_" text must consist of one character
+	// the following member variables with "char_" suffix must consist of one character
 #if __cplusplus > 201703L  // for C++20
 	inline static const std::string done_char_ = reinterpret_cast<const char*>(u8"█");
 #else
@@ -618,23 +613,19 @@ class spinner {
 	}
 
 #ifdef _WIN32
-	inline static const std::array<std::string, 4> spinner_chars_ = {{"|", "/", "-", "\\"}};
+	inline static const std::vector<std::string> spinner_chars_ = {{"|", "/", "-", "\\"}};
+	inline static const std::chrono::milliseconds interval_default = std::chrono::milliseconds(130);
 #else
 #if __cplusplus > 201703L  // for C++20
-	inline static const std::array<std::u8string, 10> spinner_chars_ = {
-		u8"⠋", u8"⠙", u8"⠹", u8"⠸", u8"⠼", u8"⠴", u8"⠦", u8"⠧", u8"⠇", u8"⠏"};
+	inline static const std::vector<std::u8string> spinner_chars_ = {
 #else
-	inline static const std::array<std::string, 10> spinner_chars_ = {
-		{u8"⠋", u8"⠙", u8"⠹", u8"⠸", u8"⠼", u8"⠴", u8"⠦", u8"⠧", u8"⠇", u8"⠏"}};
+	inline static const std::vector<std::string> spinner_chars_ = {
 #endif
+		{u8"⠋", u8"⠙", u8"⠹", u8"⠸", u8"⠼", u8"⠴", u8"⠦", u8"⠧", u8"⠇", u8"⠏"}
+	};
+	inline static const std::chrono::milliseconds interval_default = std::chrono::milliseconds(80);
 #endif
 	std::chrono::milliseconds interval_;
-#ifdef _WIN32
-	inline constexpr static std::chrono::milliseconds interval_default = std::chrono::milliseconds(130);
-#else
-	inline constexpr static std::chrono::milliseconds interval_default =
-		std::chrono::milliseconds(80);
-#endif
 	std::string text_;
 	bool active_ = false;
 	std::optional<std::thread> thr_renderer_ = std::nullopt;
