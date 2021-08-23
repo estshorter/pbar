@@ -193,7 +193,7 @@ std::optional<int> get_console_width() {
 	return std::nullopt;
 #else
 	struct winsize w;
-	if (!term::equal_stdout_term()) {
+	if (!equal_stdout_term()) {
 		return std::nullopt;
 	}
 	if (ioctl(fileno(stdout), TIOCGWINSZ, &w)) {
@@ -622,11 +622,11 @@ class spinner {
 #else
 #if __cplusplus > 201703L  // for C++20
 	inline static const std::vector<std::u8string> spinner_chars_ = {
-		u8"⠋", u8"⠙", u8"⠹", u8"⠸", u8"⠼", u8"⠴", u8"⠦", u8"⠧", u8"⠇", u8"⠏"};
 #else
 	inline static const std::vector<std::string> spinner_chars_ = {
-		{u8"⠋", u8"⠙", u8"⠹", u8"⠸", u8"⠼", u8"⠴", u8"⠦", u8"⠧", u8"⠇", u8"⠏"}};
 #endif
+		{u8"⠋", u8"⠙", u8"⠹", u8"⠸", u8"⠼", u8"⠴", u8"⠦", u8"⠧", u8"⠇", u8"⠏"}
+	};
 #endif
 	std::chrono::milliseconds interval_;
 #ifdef _WIN32
