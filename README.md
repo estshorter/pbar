@@ -4,7 +4,7 @@
 ![demo](https://raw.githubusercontent.com/estshorter/pbar/videos/example1.gif)
 
 ## Highlights
-- Support Windows and Linux
+- Support Windows10 and Linux
 - Support UTF-8 character (even in Windows!)
 - Support output while displaying a bar
 - Header only ([pbar.hpp](https://github.com/estshorter/pbar/blob/master/pbar.hpp))
