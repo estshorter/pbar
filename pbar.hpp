@@ -252,7 +252,7 @@ class pbar {
 		prog = std::min(prog, total_);
 		progress_ = prog;
 
-		if (enable_recalc_console_width_ && (prog % recalc_cycle_) == 0) {
+		if (recalc_cycle_ && (prog % recalc_cycle_.value()) == 0) {
 			ncols_ = std::min(static_cast<std::uint64_t>(term::get_console_width().value_or(1) - 1),
 							  ncols_);
 		}
@@ -364,12 +364,10 @@ class pbar {
 		if (cycle == 0) {
 			throw std::invalid_argument("cycle must be greater than zero");
 		}
-		enable_recalc_console_width_ = true;
 		recalc_cycle_ = cycle;
 	}
 	void disable_recalc_console_width() {
-		enable_recalc_console_width_ = false;
-		recalc_cycle_ = 0;
+		recalc_cycle_ = std::nullopt;
 	}
 
 	void reset() {
@@ -454,10 +452,9 @@ class pbar {
 	inline constexpr static auto closing_bracket_char_ = "|";
 	std::string desc_ = "";
 	std::uint64_t digit_;
-	std::uint64_t recalc_cycle_ = 0;
-	std::optional<std::chrono::steady_clock::time_point> epoch_;
+	std::optional<std::uint64_t> recalc_cycle_ = std::nullopt;
+	std::optional<std::chrono::steady_clock::time_point> epoch_ = std::nullopt;
 	bool enable_stack_ = false;
-	bool enable_recalc_console_width_ = false;
 	bool leave_ = true;
 	bool enable_time_measurement_ = true;
 	bool interrupted_ = false;
