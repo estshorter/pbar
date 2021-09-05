@@ -385,6 +385,7 @@ class pbar {
 		if (term::equal_stdout_term()) {
 			u8cout_ << term::clear_line << '\r';
 			u8cout_ << std::forward<T>(obj);
+			interrupted_ = true;
 			return u8cout_;
 		} else {
 			std::cout << std::forward<T>(obj);
@@ -398,6 +399,7 @@ class pbar {
 					  "std::string(T) must be constructible");
 		if (term::equal_stderr_term() && term::equal_stdout_term()) {
 			std::cerr << term::clear_line << '\r';
+			interrupted_ = true;
 		}
 		std::cerr << std::forward<T>(msg);
 	}
