@@ -156,7 +156,7 @@ DWORD enable_escape_sequence() {
 	}
 	if (!SetConsoleMode(hOutput, dwMode_orig_ | ENABLE_VIRTUAL_TERMINAL_PROCESSING |
 									 DISABLE_NEWLINE_AUTO_RETURN)) {
-		throw std::runtime_error("SetConsoleMode failed. cannot set virtual terminal flag.s");
+		throw std::runtime_error("SetConsoleMode failed. cannot set virtual terminal flags.");
 	}
 	return dwMode_orig_;
 #else
