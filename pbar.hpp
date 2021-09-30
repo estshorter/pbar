@@ -110,7 +110,7 @@ constexpr auto bright_magenta = "\x1b[95m";
 constexpr auto bright_cyan = "\x1b[96m";
 constexpr auto bright_white = "\x1b[97m";
 
-bool equal_stdout_term() {
+inline bool equal_stdout_term() {
 #ifdef _WIN32
 	if (_isatty(_fileno(stdout))) {
 #else
@@ -121,7 +121,7 @@ bool equal_stdout_term() {
 	return false;
 }
 
-bool equal_stderr_term() {
+inline bool equal_stderr_term() {
 #ifdef _WIN32
 	if (_isatty(_fileno(stderr))) {
 #else
@@ -132,7 +132,7 @@ bool equal_stderr_term() {
 	return false;
 }
 
-std::string up(short dist) {
+inline std::string up(short dist) {
 	std::ostringstream oss;
 	if (dist < 0) {
 		throw std::runtime_error("dist must be non-negative");
@@ -141,7 +141,7 @@ std::string up(short dist) {
 	return oss.str();
 }
 
-DWORD enable_escape_sequence() {
+inline DWORD enable_escape_sequence() {
 #ifdef _WIN32
 	if (!equal_stdout_term()) {
 		return 0;
@@ -165,7 +165,7 @@ DWORD enable_escape_sequence() {
 }
 
 #ifdef _WIN32
-void reset_term_setting(DWORD dwMode_orig_) {
+inline void reset_term_setting(DWORD dwMode_orig_) {
 	if (!equal_stdout_term()) {
 		return;
 	}
@@ -178,12 +178,12 @@ void reset_term_setting(DWORD dwMode_orig_) {
 		throw std::runtime_error("SetConsoleMode failed. cannot reset console mode.");
 	}
 #else
-void reset_term_setting(DWORD) {
+inline void reset_term_setting(DWORD) {
 	return;
 #endif
 }
 
-std::optional<int> get_console_width() {
+inline std::optional<int> get_console_width() {
 #ifdef _WIN32
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	bool ret = ::GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
@@ -614,7 +614,7 @@ class spinner {
 
 #ifdef _WIN32
 	inline static const std::array<std::string, 4> spinner_chars_ = {{"|", "/", "-", "\\"}};
-	inline constexpr static std::chrono::milliseconds interval_default =
+	constexpr static std::chrono::milliseconds interval_default =
 		std::chrono::milliseconds(130);
 #else
 #if __cplusplus > 201703L  // for C++20
@@ -624,7 +624,7 @@ class spinner {
 #endif
 		{u8"⠋", u8"⠙", u8"⠹", u8"⠸", u8"⠼", u8"⠴", u8"⠦", u8"⠧", u8"⠇", u8"⠏"}
 	};
-	inline constexpr static std::chrono::milliseconds interval_default =
+	constexpr static std::chrono::milliseconds interval_default =
 		std::chrono::milliseconds(80);
 #endif
 	std::chrono::milliseconds interval_;
