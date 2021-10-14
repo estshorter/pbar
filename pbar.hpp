@@ -251,7 +251,7 @@ inline std::optional<std::pair<int, int>> get_console_width_height() {
 	if (ioctl(fileno(stdout), TIOCGWINSZ, &w)) {
 		return std::nullopt;
 	}
-	return {w.ws_col, w.ws_row};
+	return std::make_pair<int, int>(w.ws_col, w.ws_row);
 #endif
 }
 }  // namespace term
