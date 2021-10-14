@@ -529,12 +529,12 @@ class pbar_aptlike {
 		}
 		if (!enable_stack_) {
 			dwMode_orig_ = term::enable_escape_sequence();
-			if (term::equal_stdout_term()) {
-				// u8cout_ << term::hide_cursor;
-				u8cout_ << term::push;
-				u8cout_ << term::scroll_margin(0, nrows_ - 1);
-				u8cout_ << term::pop;
-			}
+			// if (term::equal_stdout_term()) {
+			// 	// u8cout_ << term::hide_cursor;
+			// 	u8cout_ << term::push;
+			// 	u8cout_ << term::scroll_margin(0, nrows_ - 1);
+			// 	u8cout_ << term::pop;
+			// }
 		}
 		if (total_ == 0) throw std::runtime_error("total_ must be greater than zero");
 	}
@@ -546,7 +546,9 @@ class pbar_aptlike {
 		if (term::equal_stdout_term()) {
 			u8cout_ << term::show_cursor;
 			auto col_row = term::get_console_width_height();
+			u8cout_ << term::push;
 			u8cout_ << term::scroll_margin(0, col_row.value().second);
+			u8cout_ << term::pop;
 		}
 		try {
 			term::reset_term_setting(dwMode_orig_);
@@ -570,7 +572,11 @@ class pbar_aptlike {
 			progress_ = 0;
 			ncols_ = std::min(static_cast<std::uint64_t>(term::get_console_width().value_or(1) - 1),
 							  ncols_);
-			// u8cout_ << std::endl;
+			// u8cout_ << term::hide_cursor;
+			u8cout_ << std::endl << term::up(1);
+			u8cout_ << term::push;
+			u8cout_ << term::scroll_margin(0, nrows_ - 1);
+			u8cout_ << term::pop;
 		}
 
 		u8cout_ << term::push;
