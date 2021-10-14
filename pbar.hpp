@@ -74,6 +74,7 @@ struct u8cout_ : private std::streambuf, public std::ostream {
 #ifdef _WIN32
 		oss.put(static_cast<char>(c));
 		if (c == '\n') {
+			oss.put('\r');
 			flush();
 		}
 #else
@@ -110,6 +111,24 @@ constexpr auto bright_magenta = "\x1b[95m";
 constexpr auto bright_cyan = "\x1b[96m";
 constexpr auto bright_white = "\x1b[97m";
 
+constexpr auto push =
+	"\x1b"
+	"7";
+constexpr auto pop =
+	"\x1b"
+	"8";
+
+inline std::string scroll_margin(int top, int bottom) {
+	std::ostringstream oss;
+	if (top < 0) {
+		throw std::runtime_error("top must be non-negative");
+	}
+	if (bottom < 0 || bottom <= top) {
+		throw std::runtime_error("bottom must be non-negative and less than top");
+	}
+	oss << "\x1b[" << top << ";" << bottom << "r";
+	return oss.str();
+}
 inline bool equal_stdout_term() {
 #ifdef _WIN32
 	if (_isatty(_fileno(stdout))) {
@@ -138,6 +157,18 @@ inline std::string up(short dist) {
 		throw std::runtime_error("dist must be non-negative");
 	}
 	oss << "\x1b[" << dist << "A";
+	return oss.str();
+}
+
+inline std::string set_pos(short x, short y) {
+	std::ostringstream oss;
+	if (x < 0) {
+		throw std::runtime_error("x must be non-negative");
+	}
+	if (y < 0) {
+		throw std::runtime_error("y must be non-negative");
+	}
+	oss << "\x1b[" << y << ";" << x << "f";
 	return oss.str();
 }
 
@@ -200,6 +231,27 @@ inline std::optional<int> get_console_width() {
 		return std::nullopt;
 	}
 	return w.ws_col;
+#endif
+}
+
+inline std::optional<std::pair<int, int>> get_console_width_height() {
+#ifdef _WIN32
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+	bool ret = ::GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+	if (ret) {
+		return std::make_pair<int, int>(csbi.srWindow.Left - csbi.srWindow.Right + 1,
+										csbi.srWindow.Bottom - csbi.srWindow.Top + 1);
+	}
+	return std::nullopt;
+#else
+	struct winsize w;
+	if (!equal_stdout_term()) {
+		return std::nullopt;
+	}
+	if (ioctl(fileno(stdout), TIOCGWINSZ, &w)) {
+		return std::nullopt;
+	}
+	return {w.ws_col, w.ws_row};
 #endif
 }
 }  // namespace term
@@ -366,9 +418,7 @@ class pbar {
 		}
 		recalc_cycle_ = cycle;
 	}
-	void disable_recalc_console_width() {
-		recalc_cycle_ = std::nullopt;
-	}
+	void disable_recalc_console_width() { recalc_cycle_ = std::nullopt; }
 
 	void reset() {
 		progress_ = std::nullopt;
@@ -396,7 +446,7 @@ class pbar {
 		static_assert(std::is_constructible_v<std::string, T>,
 					  "std::string(T) must be constructible");
 		if (term::equal_stderr_term() && term::equal_stdout_term()) {
-			std::cerr << term::clear_line << '\r';
+			// std::cerr << term::clear_line << '\r';
 			interrupted_ = true;
 		}
 		std::cerr << std::forward<T>(msg);
@@ -440,6 +490,291 @@ class pbar {
    private:
 	std::uint64_t total_ = 0;
 	std::uint64_t ncols_ = 80;
+	std::optional<std::uint64_t> progress_ = std::nullopt;
+	// the following member variables with "char_" suffix must consist of one character
+#if __cplusplus > 201703L  // for C++20
+	inline static const std::string done_char_ = reinterpret_cast<const char*>(u8"█");
+#else
+	inline constexpr static auto done_char_ = u8"█";
+#endif
+	inline constexpr static auto todo_char_ = " ";
+	inline constexpr static auto opening_bracket_char_ = "|";
+	inline constexpr static auto closing_bracket_char_ = "|";
+	std::string desc_ = "";
+	std::uint64_t digit_;
+	std::optional<std::uint64_t> recalc_cycle_ = std::nullopt;
+	std::optional<std::chrono::steady_clock::time_point> epoch_ = std::nullopt;
+	bool enable_stack_ = false;
+	bool leave_ = true;
+	bool enable_time_measurement_ = true;
+	bool interrupted_ = false;
+	detail::u8cout_ u8cout_;
+	DWORD dwMode_orig_ = 0;
+};
+
+class pbar_aptlike {
+   public:
+	pbar_aptlike(std::uint64_t total, const std::string& desc = "")
+		: pbar_aptlike(total, static_cast<std::uint64_t>(term::get_console_width().value_or(1) - 1),
+					   desc){};
+
+	pbar_aptlike(std::uint64_t total, std::uint64_t ncols, const std::string& desc = "")
+		: total_(total), ncols_(ncols), desc_(desc) {
+		digit_ = utils::get_digit(total);
+		auto col_row = term::get_console_width_height();
+		if (col_row) {
+			nrows_ = col_row.value().second;
+		} else {
+			nrows_ = 1;
+		}
+		if (!enable_stack_) {
+			dwMode_orig_ = term::enable_escape_sequence();
+			if (term::equal_stdout_term()) {
+				// u8cout_ << term::hide_cursor;
+				u8cout_ << term::push;
+				u8cout_ << term::scroll_margin(0, nrows_ - 1);
+				u8cout_ << term::pop;
+			}
+		}
+		if (total_ == 0) throw std::runtime_error("total_ must be greater than zero");
+	}
+
+	~pbar_aptlike() {
+		if (enable_stack_) {
+			return;
+		}
+		if (term::equal_stdout_term()) {
+			u8cout_ << term::show_cursor;
+			auto col_row = term::get_console_width_height();
+			u8cout_ << term::scroll_margin(0, col_row.value().second);
+		}
+		try {
+			term::reset_term_setting(dwMode_orig_);
+		} catch (std::runtime_error& e) {
+			std::cerr << e.what() << std::endl;
+		}
+	}
+
+	void tick(std::uint64_t delta = 1) {
+		using namespace std::chrono;
+
+		if (term::equal_stdout_term() == 0) {
+			return;
+		}
+
+		if (!progress_.has_value() && enable_stack_) {
+			u8cout_ << std::endl;
+		}
+
+		if (!progress_.has_value()) {
+			progress_ = 0;
+			ncols_ = std::min(static_cast<std::uint64_t>(term::get_console_width().value_or(1) - 1),
+							  ncols_);
+			// u8cout_ << std::endl;
+		}
+
+		u8cout_ << term::push;
+		u8cout_ << term::set_pos(0, static_cast<short>(nrows_));
+
+		std::uint64_t prog = progress_.value();
+		prog += delta;
+		prog = std::min(prog, total_);
+		progress_ = prog;
+
+		if (recalc_cycle_ && (prog % recalc_cycle_.value()) == 0) {
+			ncols_ = std::min(static_cast<std::uint64_t>(term::get_console_width().value_or(1) - 1),
+							  ncols_);
+			auto col_row = term::get_console_width_height();
+			if (col_row) {
+				nrows_ = col_row.value().second;
+			} else {
+				nrows_ = 1;
+			}
+		}
+
+		nanoseconds dt = 0s;
+		seconds remaining = 0s;
+		double vel = 0;
+
+		if (enable_time_measurement_) {
+			if (!epoch_) {
+				epoch_ = steady_clock::now();
+			} else {
+				dt = steady_clock::now() - *epoch_;
+			}
+			if (dt.count() > 0) {
+				vel = static_cast<double>(prog) / (dt.count() * 1e-9);
+				remaining = seconds(static_cast<long long>(std::round((total_ - prog) / (vel))));
+			}
+		}
+		std::int64_t width_non_brackets_base = desc_.size() + 2 * digit_ + 8;
+		std::int64_t width_non_brackets_time = 0;
+		if (enable_time_measurement_) {
+			width_non_brackets_time += utils::get_digit(static_cast<std::int64_t>(vel)) + 23;
+			if (auto dt_h = duration_cast<hours>(dt).count(); dt_h > 0) {
+				width_non_brackets_time += 1 + utils::get_digit(dt_h);
+			}
+			if (auto remain_h = duration_cast<hours>(remaining).count(); remain_h > 0) {
+				width_non_brackets_time += 1 + utils::get_digit(remain_h);
+			}
+		}
+		std::uint64_t width_non_brackets = width_non_brackets_base + width_non_brackets_time;
+		std::uint64_t width_brackets;
+		if (ncols_ > width_non_brackets) {
+			width_brackets = ncols_ - width_non_brackets;
+		} else {
+			disable_time_measurement();
+			width_brackets = 10;
+			ncols_ = width_brackets + width_non_brackets_base;
+		}
+
+		double prog_rate = static_cast<double>(prog) / total_;
+		std::uint64_t num_brackets =
+			static_cast<std::uint64_t>(std::round(prog_rate * width_brackets));
+
+		auto prev = u8cout_.fill(' ');
+
+		u8cout_ << term::clear_line << '\r';
+		if (!desc_.empty()) {
+			u8cout_ << desc_ << ":";
+		}
+		u8cout_ << std::setw(3) << static_cast<int>(std::round(prog_rate * 100)) << "%"
+				<< opening_bracket_char_;
+		for (decltype(num_brackets) _ = 0; _ < num_brackets; _++) {
+			u8cout_ << done_char_;
+		}
+		for (decltype(num_brackets) _ = 0; _ < width_brackets - num_brackets; _++) {
+			u8cout_ << todo_char_;
+		}
+		u8cout_ << closing_bracket_char_ << " " << std::setw(digit_) << prog << "/" << total_;
+		if (enable_time_measurement_) {
+			u8cout_ << " [" << std::setfill('0');
+			if (auto dt_h = duration_cast<hours>(dt).count() > 0) {
+				u8cout_ << dt_h << ':';
+			}
+			u8cout_ << std::setw(2) << duration_cast<minutes>(dt).count() % 60 << ':'
+					<< std::setw(2) << duration_cast<seconds>(dt).count() % 60 << '<';
+			if (auto remain_h = duration_cast<hours>(remaining).count(); remain_h > 0) {
+				u8cout_ << remain_h % 60 << ':';
+			}
+			u8cout_ << std::setw(2) << duration_cast<minutes>(remaining).count() % 60 << ':'
+					<< std::setw(2) << remaining.count() % 60 << ", " << std::setw(0) << std::fixed
+					<< std::setprecision(2) << vel << "it/s]";
+		}
+		if (progress_ == total_) {
+			if (!leave_) {
+				u8cout_ << term::clear_line;
+			} else {
+				// u8cout_ << "\r" << std::endl;
+			}
+			if (enable_stack_ && !interrupted_) {
+				u8cout_ << term::up(1);
+			}
+			reset();
+		}
+		u8cout_ << std::setfill(prev);
+		u8cout_ << term::pop;
+		u8cout_.flush();
+	}
+
+	// we assume desc_ consists of ascii characters
+	void set_description(const std::string& desc) { desc_ = desc; }
+	void set_description(std::string&& desc) { desc_ = std::move(desc); }
+#if __cplusplus > 201703L  // for C++20
+	void set_description(const std::u8string& desc) {
+		desc_ = reinterpret_cast<const char*>(desc.data());
+	}
+	void set_description(std::u8string&& desc) {
+		desc_ = reinterpret_cast<const char*>(std::move(desc.data()));
+	}
+#endif
+	void enable_stack() {
+		enable_stack_ = true;
+		leave_ = false;
+	}
+	void enable_leave() { leave_ = true; }
+	void disable_leave() { leave_ = false; }
+	void disable_time_measurement() { enable_time_measurement_ = false; }
+	void enable_time_measurement() { enable_time_measurement_ = true; }
+	void enable_recalc_console_width(std::uint64_t cycle) {
+		if (cycle == 0) {
+			throw std::invalid_argument("cycle must be greater than zero");
+		}
+		recalc_cycle_ = cycle;
+	}
+	void disable_recalc_console_width() { recalc_cycle_ = std::nullopt; }
+
+	void reset() {
+		progress_ = std::nullopt;
+		epoch_ = std::nullopt;
+		interrupted_ = false;
+	}
+
+	void init() { tick(0); }
+
+	template <typename T>
+	std::ostream& operator<<(T&& obj) {
+		if (term::equal_stdout_term()) {
+			// u8cout_ << '\r';
+			u8cout_ << std::forward<T>(obj);
+			// interrupted_ = true;
+			return u8cout_;
+		} else {
+			std::cout << std::forward<T>(obj);
+			return std::cout;
+		}
+	}
+
+	template <class T>
+	void warn(T&& msg) {
+		static_assert(std::is_constructible_v<std::string, T>,
+					  "std::string(T) must be constructible");
+		if (term::equal_stderr_term() && term::equal_stdout_term()) {
+			std::cerr << '\r';
+			// interrupted_ = true;
+		}
+		std::cerr << std::forward<T>(msg);
+	}
+	pbar_aptlike& operator+=(std::uint64_t delta) {
+		tick(delta);
+		return *this;
+	}
+	pbar_aptlike& operator++(void) {
+		tick(1);
+		return *this;
+	}
+	pbar_aptlike& operator++(int) {
+		tick(1);
+		return *this;
+	}
+
+	pbar_aptlike& operator=(const pbar_aptlike& other) {
+		total_ = other.total_;
+		digit_ = other.digit_;
+		recalc_cycle_ = other.recalc_cycle_;
+		epoch_ = other.epoch_;
+		enable_stack_ = other.enable_stack_;
+		leave_ = other.leave_;
+		enable_time_measurement_ = other.enable_time_measurement_;
+		interrupted_ = other.interrupted_;
+		return *this;
+	}
+	pbar_aptlike& operator=(pbar_aptlike&& other) noexcept {
+		digit_ = std::move(other.digit_);
+		total_ = std::move(other.total_);
+		recalc_cycle_ = std::move(other.recalc_cycle_);
+		epoch_ = std::move(other.epoch_);
+		enable_stack_ = std::move(other.enable_stack_);
+		leave_ = std::move(other.leave_);
+		enable_time_measurement_ = std::move(other.enable_time_measurement_);
+		interrupted_ = std::move(other.interrupted_);
+		return *this;
+	}
+
+   private:
+	std::uint64_t total_ = 0;
+	std::uint64_t ncols_ = 80;
+	int nrows_ = 0;
 	std::optional<std::uint64_t> progress_ = std::nullopt;
 	// the following member variables with "char_" suffix must consist of one character
 #if __cplusplus > 201703L  // for C++20
@@ -614,8 +949,7 @@ class spinner {
 
 #ifdef _WIN32
 	inline static const std::array<std::string, 4> spinner_chars_ = {{"|", "/", "-", "\\"}};
-	constexpr static std::chrono::milliseconds interval_default =
-		std::chrono::milliseconds(130);
+	constexpr static std::chrono::milliseconds interval_default = std::chrono::milliseconds(130);
 #else
 #if __cplusplus > 201703L  // for C++20
 	inline static const std::array<std::u8string, 10> spinner_chars_ = {
@@ -624,8 +958,7 @@ class spinner {
 #endif
 		{u8"⠋", u8"⠙", u8"⠹", u8"⠸", u8"⠼", u8"⠴", u8"⠦", u8"⠧", u8"⠇", u8"⠏"}
 	};
-	constexpr static std::chrono::milliseconds interval_default =
-		std::chrono::milliseconds(80);
+	constexpr static std::chrono::milliseconds interval_default = std::chrono::milliseconds(80);
 #endif
 	std::chrono::milliseconds interval_;
 	std::string text_;
