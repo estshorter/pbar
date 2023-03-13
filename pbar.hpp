@@ -314,7 +314,7 @@ class pbar {
 		u8cout_ << closing_bracket_char_ << " " << std::setw(digit_) << prog << "/" << total_;
 		if (enable_time_measurement_) {
 			u8cout_ << " [" << std::setfill('0');
-			if (auto dt_h = duration_cast<hours>(dt).count() > 0) {
+			if (auto dt_h = duration_cast<hours>(dt).count(); dt_h > 0) {
 				u8cout_ << dt_h << ':';
 			}
 			u8cout_ << std::setw(2) << duration_cast<minutes>(dt).count() % 60 << ':'
