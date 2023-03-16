@@ -30,15 +30,15 @@ namespace utils {
 /// <param name="enc_src">変換元の文字コードを指定する。UTF8: CP_UTF8, SJIS:
 /// CP_THREAD_ACP</param>
 inline std::wstring to_utf16(UINT enc_src, const std::string& src) {
-	//変換先の文字列長を求めておいてから変換する (pre-flighting)
-	// length_utf16にはヌル文字分も入る
+	// 変換先の文字列長を求めておいてから変換する (pre-flighting)
+	//  length_utf16にはヌル文字分も入る
 	int length_utf16 = MultiByteToWideChar(enc_src, 0, src.c_str(), -1, NULL, 0);
 	if (length_utf16 <= 0) {
 		return L"";
 	}
 	std::wstring str_utf16(length_utf16, 0);
 	MultiByteToWideChar(enc_src, 0, src.c_str(), -1, &str_utf16[0], length_utf16);
-	return str_utf16.erase(static_cast<size_t>(length_utf16 - 1), 1);  //ヌル文字削除
+	return str_utf16.erase(static_cast<size_t>(length_utf16 - 1), 1);  // ヌル文字削除
 }
 #endif
 // 0との比較をするため浮動小数点型には対応不可
@@ -366,9 +366,7 @@ class pbar {
 		}
 		recalc_cycle_ = cycle;
 	}
-	void disable_recalc_console_width() {
-		recalc_cycle_ = std::nullopt;
-	}
+	void disable_recalc_console_width() { recalc_cycle_ = std::nullopt; }
 
 	void reset() {
 		progress_ = std::nullopt;
@@ -614,8 +612,7 @@ class spinner {
 
 #ifdef _WIN32
 	inline static const std::array<std::string, 4> spinner_chars_ = {{"|", "/", "-", "\\"}};
-	constexpr static std::chrono::milliseconds interval_default =
-		std::chrono::milliseconds(130);
+	constexpr static std::chrono::milliseconds interval_default = std::chrono::milliseconds(130);
 #else
 #if __cplusplus > 201703L  // for C++20
 	inline static const std::array<std::u8string, 10> spinner_chars_ = {
@@ -624,8 +621,7 @@ class spinner {
 #endif
 		{u8"⠋", u8"⠙", u8"⠹", u8"⠸", u8"⠼", u8"⠴", u8"⠦", u8"⠧", u8"⠇", u8"⠏"}
 	};
-	constexpr static std::chrono::milliseconds interval_default =
-		std::chrono::milliseconds(80);
+	constexpr static std::chrono::milliseconds interval_default = std::chrono::milliseconds(80);
 #endif
 	std::chrono::milliseconds interval_;
 	std::string text_;
