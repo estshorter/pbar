@@ -570,7 +570,7 @@ class spinner {
 		return *this;
 	}
 
-	spinner& operator=(spinner&& other) {
+	spinner& operator=(spinner&& other) noexcept {
 		other.stop();
 		interval_ = std::move(other.interval_);
 		text_ = std::move(other.text_);
